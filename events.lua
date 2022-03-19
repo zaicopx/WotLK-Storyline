@@ -70,7 +70,7 @@ local Storyline_NPCFrameChatOption1, Storyline_NPCFrameChatOption2, Storyline_NP
 local Storyline_NPCFrameObjectives, Storyline_NPCFrameObjectivesNo, Storyline_NPCFrameObjectivesYes = Storyline_NPCFrameObjectives, Storyline_NPCFrameObjectivesNo, Storyline_NPCFrameObjectivesYes;
 local Storyline_NPCFrameObjectivesImage = Storyline_NPCFrameObjectivesImage;
 local Storyline_NPCFrameRewardsItemIcon, Storyline_NPCFrameRewardsItem, Storyline_NPCFrameRewards = Storyline_NPCFrameRewardsItemIcon, Storyline_NPCFrameRewardsItem, Storyline_NPCFrameRewards;
-local Storyline_NPCFrame, Storyline_NPCFrameChatNextText = Storyline_NPCFrame, Storyline_NPCFrameChatNextText;
+local Storyline_NPCFrame, Storyline_NPCFrameChatNextButton = Storyline_NPCFrame, Storyline_NPCFrameChatNextButton;
 local Storyline_NPCFrameChat, Storyline_NPCFrameChatText = Storyline_NPCFrameChat, Storyline_NPCFrameChatText;
 local Storyline_NPCFrameChatNext, Storyline_NPCFrameChatPrevious = Storyline_NPCFrameChatNext, Storyline_NPCFrameChatPrevious;
 local Storyline_NPCFrameConfigButton, Storyline_NPCFrameObjectivesContent = Storyline_NPCFrameConfigButton, Storyline_NPCFrameObjectivesContent;
@@ -527,9 +527,9 @@ eventHandlers["QUEST_DETAIL"] = function()
 
 	local contentHeight = Storyline_NPCFrameObjectivesContent.Title:GetHeight() + 15;
 
-	Storyline_NPCFrameObjectives:Show();
+	--Storyline_NPCFrameObjectives:Show();
 	Storyline_NPCFrameObjectivesImage:SetDesaturated(false);
-	setTooltipForSameFrame(Storyline_NPCFrameObjectives, "TOP", 0, 0, QUEST_OBJECTIVES, loc("SL_CHECK_OBJ"));
+	--setTooltipForSameFrame(Storyline_NPCFrameObjectives, "TOP", 0, 0, QUEST_OBJECTIVES, loc("SL_CHECK_OBJ"));
 
 	local objectives = GetObjectiveText();
 	if objectives:len() > 0 then
@@ -1001,13 +1001,13 @@ function Storyline_API.playNext(targetModel)
 	Storyline_NPCFrameChatNext:Enable();
 	Storyline_NPCFrameChat.currentIndex = Storyline_NPCFrameChat.currentIndex + 1;
 
-	Storyline_NPCFrameChatNextText:SetText(loc("SL_NEXT"));
+	Storyline_NPCFrameChatNextButton:SetText(loc("SL_NEXT"));
 	if Storyline_NPCFrameChat.currentIndex >= #Storyline_NPCFrameChat.texts then
 		if Storyline_NPCFrameChat.eventInfo.finishText and (type(Storyline_NPCFrameChat.eventInfo.finishText) ~= "function" or Storyline_NPCFrameChat.eventInfo.finishText()) then
 			if type(Storyline_NPCFrameChat.eventInfo.finishText) == "function" then
-				Storyline_NPCFrameChatNextText:SetText(Storyline_NPCFrameChat.eventInfo.finishText());
+				Storyline_NPCFrameChatNextButton:SetText(Storyline_NPCFrameChat.eventInfo.finishText());
 			else
-				Storyline_NPCFrameChatNextText:SetText(Storyline_NPCFrameChat.eventInfo.finishText);
+				Storyline_NPCFrameChatNextButton:SetText(Storyline_NPCFrameChat.eventInfo.finishText);
 			end
 		end
 	end
@@ -1043,12 +1043,13 @@ function Storyline_API.initEventsStructure()
 			finishText = loc("SL_CHECK_OBJ"),
 			finishMethod = function()
 				if not Storyline_NPCFrameObjectivesContent:IsVisible() then
+					Storyline_NPCFrameObjectives:Show();
 					configureHoverFrame(Storyline_NPCFrameObjectivesContent, Storyline_NPCFrameObjectives, "TOP");
 					setTooltipForSameFrame(Storyline_NPCFrameObjectives, "TOP", 0, 0, nil, nil);
 					Storyline_MainTooltip:Hide();
 					Storyline_NPCFrameObjectivesYes:Show();
 					Storyline_NPCFrameObjectivesNo:Show();
-					Storyline_NPCFrameChatNextText:SetText(loc("SL_ACCEPTANCE"));
+					Storyline_NPCFrameChatNextButton:SetText(loc("SL_ACCEPTANCE"));
 					showQuestPortraitFrame();
 				else
 					acceptQuest();
@@ -1059,15 +1060,16 @@ function Storyline_API.initEventsStructure()
 			text = GetProgressText,
 			finishMethod = function()
 				if not Storyline_NPCFrameObjectivesContent:IsVisible() then
-					configureHoverFrame(Storyline_NPCFrameObjectivesContent, Storyline_NPCFrameObjectives, "TOP");
+					Storyline_NPCFrameObjectives:Show();
+					configureHoverFrame(Storyline_NPCFrameObjectivesContent, Storyline_NPCFrameObjectives, "TOP")
 					setTooltipForSameFrame(Storyline_NPCFrameObjectives, "TOP", 0, 0, nil, nil);
 					Storyline_MainTooltip:Hide();
 					if IsQuestCompletable() then
 						Storyline_NPCFrameObjectives.OK:Show();
-						Storyline_NPCFrameChatNextText:SetText(loc("SL_CONTINUE"));
+						Storyline_NPCFrameChatNextButton:SetText(loc("SL_CONTINUE"));
 						playSelfAnim(68);
 					else
-						Storyline_NPCFrameChatNextText:SetText(loc("SL_NOT_YET"));
+						Storyline_NPCFrameChatNextButton:SetText(loc("SL_NOT_YET"));
 						playSelfAnim(186);
 					end
 					showQuestPortraitFrame();
@@ -1087,14 +1089,14 @@ function Storyline_API.initEventsStructure()
 			text = GetRewardText,
 			finishMethod = function()
 				if not Storyline_NPCFrameRewards.Content:IsVisible() then
-					configureHoverFrame(Storyline_NPCFrameRewards.Content, Storyline_NPCFrameRewardsItem, "TOP");
+					configureHoverFrame(Storyline_NPCFrameRewards.Content, Storyline_NPCFrameRewardsItem, "RIGHT", -440);
 					setTooltipForSameFrame(Storyline_NPCFrameRewardsItem, "TOP", 0, 0);
 					Storyline_MainTooltip:Hide();
 					if GetNumQuestChoices() > 1 then
-						Storyline_NPCFrameChatNextText:SetText(loc("SL_SELECT_REWARD"));
+						Storyline_NPCFrameChatNextButton:SetText(loc("SL_SELECT_REWARD"));
 						Storyline_NPCFrameChatNext:Disable();
 					else
-						Storyline_NPCFrameChatNextText:SetText(loc("SL_CONTINUE"));
+						Storyline_NPCFrameChatNextButton:SetText(loc("SL_CONTINUE"));
 					end
 				elseif GetNumQuestChoices() == 1 then
 					GetQuestReward(1);
@@ -1182,9 +1184,9 @@ function Storyline_API.initEventsStructure()
 		refreshTooltipForFrame(self);
 	end);
 
-	Storyline_NPCFrameObjectives:SetScript("OnClick", function() EVENT_INFO["QUEST_PROGRESS"].finishMethod(); end);
-	Storyline_NPCFrameObjectivesContent.Title:SetText(QUEST_OBJECTIVES);
-	Storyline_NPCFrameObjectivesContent.RequiredItemText:SetText(TURN_IN_ITEMS);
+	--Storyline_NPCFrameObjectives:SetScript("OnClick", function() EVENT_INFO["QUEST_PROGRESS"].finishMethod(); end);
+	--Storyline_NPCFrameObjectivesContent.Title:SetText(QUEST_OBJECTIVES);
+	--Storyline_NPCFrameObjectivesContent.RequiredItemText:SetText(TURN_IN_ITEMS);
 
 	Storyline_NPCFrameRewardsItem:SetScript("OnClick", function() EVENT_INFO["QUEST_COMPLETE"].finishMethod(); end);
 	Storyline_NPCFrameRewards.Content.RewardText1:SetText(REWARD_ITEMS_ONLY);

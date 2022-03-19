@@ -67,12 +67,12 @@ function Storyline_API.selectMultipleGossip(button)
 	for _, button in pairs(selectionStrings) do
 		button:Hide();
 	end
-	configureHoverFrame(Storyline_NPCFrameGossipChoices, button, "TOP");
+	local height = 40;
+	local width = 280; --345
+	configureHoverFrame(Storyline_NPCFrameGossipChoices, button, "RIGHT", -200);
 	Storyline_NPCFrameGossipChoices.Title:SetText(loc("SL_SELECT_DIALOG_OPTION"));
 	local previous = Storyline_NPCFrameGossipChoices.Title;
 	local data = { GetGossipOptions() };
-	local height = 40;
-	local width = 280; --345
 	for i = 1, GetNumGossipOptions() do
 		local gossip, gossipType = data[(i * 2) - 1], data[(i * 2)];
 		previous = getSelectionFontString(previous);
@@ -102,7 +102,7 @@ function Storyline_API.selectMultipleAvailable(button)
 	for _, button in pairs(selectionStrings) do
 		button:Hide();
 	end
-	configureHoverFrame(Storyline_NPCFrameGossipChoices, button, "TOP");
+	configureHoverFrame(Storyline_NPCFrameGossipChoices, button, "RIGHT", -200);
 	Storyline_NPCFrameGossipChoices.Title:SetText(loc("SL_SELECT_AVAILABLE_QUEST"));
 	local previous = Storyline_NPCFrameGossipChoices.Title;
 	local data = { GetGossipAvailableQuests() };
@@ -131,7 +131,7 @@ function Storyline_API.selectMultipleActive(button)
 	for _, button in pairs(selectionStrings) do
 		button:Hide();
 	end
-	configureHoverFrame(Storyline_NPCFrameGossipChoices, button, "TOP");
+	configureHoverFrame(Storyline_NPCFrameGossipChoices, button, "RIGHT", -200);
 	Storyline_NPCFrameGossipChoices.Title:SetText(loc("SL_SELECT_AVAILABLE_QUEST"));
 	local previous = Storyline_NPCFrameGossipChoices.Title;
 	local data = { GetGossipActiveQuests() };
@@ -156,7 +156,7 @@ function Storyline_API.selectMultipleActiveGreetings(button)
 	for _, button in pairs(selectionStrings) do
 		button:Hide();
 	end
-	configureHoverFrame(Storyline_NPCFrameGossipChoices, button, "TOP");
+	configureHoverFrame(Storyline_NPCFrameGossipChoices, button, "RIGHT", -200);
 	Storyline_NPCFrameGossipChoices.Title:SetText(loc("SL_SELECT_AVAILABLE_QUEST"));
 	local previous = Storyline_NPCFrameGossipChoices.Title;
 	local height = 40;
@@ -184,7 +184,7 @@ function Storyline_API.selectMultipleAvailableGreetings(button)
 	for _, button in pairs(selectionStrings) do
 		button:Hide();
 	end
-	configureHoverFrame(Storyline_NPCFrameGossipChoices, button, "TOP");
+	configureHoverFrame(Storyline_NPCFrameGossipChoices, button, "RIGHT", -200);
 	Storyline_NPCFrameGossipChoices.Title:SetText(loc("SL_SELECT_AVAILABLE_QUEST"));
 	local previous = Storyline_NPCFrameGossipChoices.Title;
 	local height = 40;

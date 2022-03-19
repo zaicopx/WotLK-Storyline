@@ -237,6 +237,7 @@ function Storyline_API.addon:OnEnable()
 	Storyline_API.locale.init();
 
 	Storyline_NPCFrameBG:SetDesaturated(true);
+
 	Storyline_NPCFrameChatNext:SetScript("OnClick", function()
 		if Storyline_NPCFrameChat.start and Storyline_NPCFrameChat.start < Storyline_NPCFrameChatText:GetText():len() then
 			Storyline_NPCFrameChat.start = Storyline_NPCFrameChatText:GetText():len();
@@ -244,6 +245,14 @@ function Storyline_API.addon:OnEnable()
 			playNext(Storyline_NPCFrameModelsYou);
 		end
 	end);
+	Storyline_NPCFrameChatNextButton:SetScript("OnClick", function()
+		if Storyline_NPCFrameChat.start and Storyline_NPCFrameChat.start < Storyline_NPCFrameChatText:GetText():len() then
+			Storyline_NPCFrameChat.start = Storyline_NPCFrameChatText:GetText():len();
+		else
+			playNext(Storyline_NPCFrameModelsYou);
+		end
+	end);
+
 	Storyline_NPCFrameChatPrevious:SetScript("OnClick", resetDialog);
 	Storyline_NPCFrameChat:SetScript("OnUpdate", onUpdateChatText);
 	Storyline_NPCFrameClose:SetScript("OnClick", closeDialog);
