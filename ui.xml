@@ -303,8 +303,7 @@
 						<Size x="325" y="150"/>
 						<Layers>
 							<Layer level="OVERLAY">
-								<FontString name="$parentTitle" parentKey="Title" inherits="GameFontNormalLarge" justifyH="CENTER" justifyV="TOP">
-									<Size x="0" y="20"/>
+								<FontString name="$parentTitle" parentKey="Title" inherits="Storyline_RewardsHeader" justifyH="LEFT" justifyV="TOP">
 									<Anchors>
 										<Anchor point="TOP" x="0" y="-10"/>
 										<Anchor point="LEFT" x="10" y="0"/>

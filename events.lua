@@ -540,10 +540,6 @@ eventHandlers["QUEST_DETAIL"] = function()
 	Storyline_NPCFrameObjectivesContent.Title:SetPoint("TOP", 0, -1 * HOVERED_FRAME_TITLE_MARGIN);
 	local contentHeight = Storyline_NPCFrameObjectivesContent.Title:GetHeight() + HOVERED_FRAME_TITLE_MARGIN;
 
-	--Storyline_NPCFrameObjectives:Show();
-	Storyline_NPCFrameObjectivesImage:SetDesaturated(false);
-	--setTooltipForSameFrame(Storyline_NPCFrameObjectives, "TOP", 0, 0, QUEST_OBJECTIVES, loc("SL_CHECK_OBJ"));
-
 	local objectives = GetObjectiveText();
 	if objectives:len() > 0 then
 		contentHeight = contentHeight + setObjectiveText(Storyline_NPCFrameObjectivesContent.Objectives, objectives, previousText);
@@ -568,7 +564,6 @@ end
 
 eventHandlers["QUEST_PROGRESS"] = function()
 	Storyline_NPCFrameObjectives:Show();
-	Storyline_NPCFrameObjectivesImage:SetDesaturated(not IsQuestCompletable());
 	setTooltipForSameFrame(Storyline_NPCFrameObjectives, "TOP", 0, 0, QUEST_OBJECTIVES, loc("SL_CHECK_OBJ"));
 
 	local previousText = Storyline_NPCFrameObjectivesContent.Title;
@@ -630,23 +625,14 @@ eventHandlers["QUEST_PROGRESS"] = function()
 				isUsable = isUsable,
 			});
 		end
-		
-		--CHANGE:Shadovv: GetNumQuestCurrencies() was implemented in cataclysm
-		--[[
-		for i = 1, GetNumQuestCurrencies() do
-			local name, texture, numItems = GetQuestCurrencyInfo("required", i);
-			bestIcon = texture;
-			tinsert(displayBuilder, {
-				text = name,
-				icon = texture,
-				count = numItems,
-				index = i,
-				type = "currency",
-				rewardType = "required",
-			});
-		end]]
 
 		Storyline_NPCFrameObjectivesImage:SetTexture(bestIcon);
+		Storyline_NPCFrameObjectivesImage:SetDesaturated(not IsQuestCompletable());
+		if IsQuestCompletable() then
+			Storyline_NPCFrameObjectiveHolo:Show()
+		else
+			Storyline_NPCFrameObjectiveHolo:Hide()
+		end
 
 		--*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
 		-- Displays structure content
@@ -726,39 +712,6 @@ eventHandlers["QUEST_COMPLETE"] = function(eventInfo)
 			tooltipSub = playerTitle
 		});
 	end
-
-	-- Skill points
-	--CHANGE:Shadovv: GetRewardSkillPoints() was implemented in cataclysm
-	--[[
-	local skillName, skillIcon, skillPoints = GetRewardSkillPoints();
-	if skillPoints then
-		skillName = skillName or "?";
-		tinsert(displayBuilder, {
-			text = BONUS_SKILLPOINTS:format(skillName),
-			icon = skillIcon,
-			count = skillPoints,
-			type = "skillpoint",
-			tooltipTitle = format(BONUS_SKILLPOINTS_TOOLTIP, skillPoints, skillName),
-		});
-	end
-
-	-- Currencies
-	--CHANGE:Shadovv: GetNumRewardCurrencies() was implemented in cataclysm
-	local currencyCount = GetNumRewardCurrencies();
-	if currencyCount > 0 then
-		for i = 1, currencyCount, 1 do -- Some quest reward several currencies
-			local name, texture, numItems = GetQuestCurrencyInfo("reward", i);
-			if name and texture and numItems then
-				tinsert(displayBuilder, {
-					text = name,
-					icon = texture,
-					count = numItems,
-					index = i,
-					type = "currency"
-				});
-			end
-		end
-	end]]
 
 	-- Item reward
 	if GetNumQuestChoices() == 1 or GetNumQuestRewards() > 0 then
@@ -1207,8 +1160,8 @@ function Storyline_API.initEventsStructure()
 	end);
 
 	--Storyline_NPCFrameObjectives:SetScript("OnClick", function() EVENT_INFO["QUEST_PROGRESS"].finishMethod(); end);
-	--Storyline_NPCFrameObjectivesContent.Title:SetText(QUEST_OBJECTIVES);
-	--Storyline_NPCFrameObjectivesContent.RequiredItemText:SetText(TURN_IN_ITEMS);
+	Storyline_NPCFrameObjectivesContent.Title:SetText(QUEST_OBJECTIVES);
+	Storyline_NPCFrameObjectivesContent.RequiredItemText:SetText(TURN_IN_ITEMS);
 
 	Storyline_NPCFrameRewardsItem:SetScript("OnClick", function() EVENT_INFO["QUEST_COMPLETE"].finishMethod(); end);
 	Storyline_NPCFrameRewards.Content.RewardText1:SetText(REWARD_ITEMS_ONLY);
