@@ -523,9 +523,22 @@ eventHandlers["QUEST_GREETING"] = function()
 	end
 end
 
+local HOVERED_FRAME_TITLE_MARGIN = 10;
+local HOVERED_FRAME_TEXT_MARGIN = 5;
+
+local function setObjectiveText(fontString, text, anchor)
+	fontString:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -1 * HOVERED_FRAME_TEXT_MARGIN);
+	fontString:SetText(text);
+	fontString:Show();
+	return fontString:GetHeight() + HOVERED_FRAME_TEXT_MARGIN;
+end
+
 eventHandlers["QUEST_DETAIL"] = function()
 
-	local contentHeight = Storyline_NPCFrameObjectivesContent.Title:GetHeight() + 15;
+	local previousText = Storyline_NPCFrameObjectivesContent.Title;
+
+	Storyline_NPCFrameObjectivesContent.Title:SetPoint("TOP", 0, -1 * HOVERED_FRAME_TITLE_MARGIN);
+	local contentHeight = Storyline_NPCFrameObjectivesContent.Title:GetHeight() + HOVERED_FRAME_TITLE_MARGIN;
 
 	--Storyline_NPCFrameObjectives:Show();
 	Storyline_NPCFrameObjectivesImage:SetDesaturated(false);
@@ -533,17 +546,17 @@ eventHandlers["QUEST_DETAIL"] = function()
 
 	local objectives = GetObjectiveText();
 	if objectives:len() > 0 then
-		Storyline_NPCFrameObjectivesContent.Objectives:SetText(objectives);
-		Storyline_NPCFrameObjectivesContent.Objectives:Show();
+		contentHeight = contentHeight + setObjectiveText(Storyline_NPCFrameObjectivesContent.Objectives, objectives, previousText);
 		contentHeight = contentHeight + 10 + Storyline_NPCFrameObjectivesContent.Objectives:GetHeight();
 	end
 
 	local groupNum = GetSuggestedGroupNum();
 	if groupNum > 0 then
-		Storyline_NPCFrameObjectivesContent.GroupSuggestion:SetText(format(QUEST_SUGGESTED_GROUP_NUM, groupNum));
-		Storyline_NPCFrameObjectivesContent.GroupSuggestion:Show();
-		contentHeight = contentHeight + 10 + Storyline_NPCFrameObjectivesContent.GroupSuggestion:GetHeight();
+		contentHeight = contentHeight +  setObjectiveText(Storyline_NPCFrameObjectivesContent.GroupSuggestion, format(QUEST_SUGGESTED_GROUP_NUM, groupNum), previousText);
 	end
+
+	-- Add some margin on the bottom
+	contentHeight = contentHeight + HOVERED_FRAME_TEXT_MARGIN;
 
 	Storyline_NPCFrameObjectivesContent:SetHeight(contentHeight);
 
@@ -558,7 +571,10 @@ eventHandlers["QUEST_PROGRESS"] = function()
 	Storyline_NPCFrameObjectivesImage:SetDesaturated(not IsQuestCompletable());
 	setTooltipForSameFrame(Storyline_NPCFrameObjectives, "TOP", 0, 0, QUEST_OBJECTIVES, loc("SL_CHECK_OBJ"));
 
-	local contentHeight = Storyline_NPCFrameObjectivesContent.Title:GetHeight() + 15;
+	local previousText = Storyline_NPCFrameObjectivesContent.Title;
+
+	Storyline_NPCFrameObjectivesContent.Title:SetPoint("TOP", 0, -1 * HOVERED_FRAME_TITLE_MARGIN);
+	local contentHeight = Storyline_NPCFrameObjectivesContent.Title:GetHeight() + HOVERED_FRAME_TITLE_MARGIN;
 
 	local questObjectives = getQuestData(GetTitleText());
 	if IsQuestCompletable() and questObjectives:len() > 0 then
@@ -651,6 +667,9 @@ eventHandlers["QUEST_PROGRESS"] = function()
 		contentHeight = contentHeight + gridHeight;
 		contentHeight = contentHeight + Storyline_NPCFrameObjectivesContent.RequiredItemText:GetHeight() + 10;
 	end
+
+	-- Add some margin on the bottom
+	contentHeight = contentHeight + HOVERED_FRAME_TEXT_MARGIN;
 
 	Storyline_NPCFrameObjectivesContent:SetHeight(contentHeight);
 end
@@ -902,6 +921,9 @@ eventHandlers["QUEST_COMPLETE"] = function(eventInfo)
 		--Storyline_NPCFrameRewards:Hide();
 		--GetQuestReward();
 	end;
+
+	-- Add some margin on the bottom
+	contentHeight = contentHeight + HOVERED_FRAME_TEXT_MARGIN;
 
 	Storyline_NPCFrameRewardsItemIcon:SetTexture(bestIcon);
 	contentHeight = contentHeight + Storyline_NPCFrameRewards.Content.Title:GetHeight() + 15;

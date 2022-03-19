@@ -28,7 +28,7 @@
 	 -->
 	<Frame name="Storyline_StandardParchmentFrame" virtual="true">
 		<Layers>
-			<Layer level="OVERLAY">
+			<Layer level="ARTWORK">
 				<!-- CORNERS -->
 				<Texture name="BorderTopLeft" file="Interface\AddOns\Storyline\Artwork\QuestionFrame\Question-Main">
 					<Size x="209" y="158"/>
@@ -238,7 +238,7 @@
 					<Anchor point="TOP" x="0" y="-100"/>
 				</Anchors>
 				<Layers>
-					<Layer level="BORDER" textureSubLevel="1">
+					<Layer level="ARTWORK" textureSubLevel="1">
 						<Texture name="Storyline_NPCFrameObjectiveHolo" file="Interface\AddOns\Storyline\Artwork\UNITPOWERBARALT\PandarenTrainingLarge_Circular_Flash" alphaMode="ADD" alpha="0.5">
 							<Size x="108" y="108"/>
 							<Anchors>
@@ -254,7 +254,7 @@
 							</Anchors>
 						</Texture>
 					</Layer>
-					<Layer level="BORDER" textureSubLevel="3">
+					<Layer level="ARTWORK" textureSubLevel="3">
 						<Texture name="Storyline_NPCFrameObjectivesBorder" file="Interface\AddOns\Storyline\Artwork\UNITPOWERBARALT\PandarenTrainingLarge_Circular_Frame">
 							<Size x="100" y="100"/>
 							<Anchors>
