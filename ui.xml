@@ -338,6 +338,38 @@
 									</Anchors>
 									<Color r="0.95" g="0.65" b="0"/>
 								</FontString>
+                <FontString name="$parentRewards" parentKey="Rewards" inherits="Storyline_RewardsHeader" justifyH="LEFT" justifyV="TOP">
+                  <Anchors>
+                    <Anchor point="TOP" relativePoint="BOTTOM" relativeTo="$parentObjectives" x="0" y="-10"/>
+                    <Anchor point="LEFT" x="10" y="0"/>
+                    <Anchor point="RIGHT" x="-10" y="0"/>
+                  </Anchors>
+                </FontString>
+                <FontString name="$parentRewardsContent" parentKey="RewardsContent" inherits="GameFontNormal" justifyH="LEFT" justifyV="TOP">
+                  <Size x="310" y="0"/>
+                  <Anchors>
+                    <Anchor point="TOP" relativePoint="BOTTOM" relativeTo="$parentRewards"/>
+                    <Anchor point="LEFT" x="10" y="0"/>
+                    <Anchor point="RIGHT" x="-10" y="0"/>
+                  </Anchors>
+                  <Color r="0.95" g="0.95" b="0.95"/>
+                </FontString>
+                <FontString name="$parentRewardsTextChoose" parentKey="RewardsTextChoose" inherits="GameFontNormal" justifyH="LEFT" justifyV="TOP">
+                  <Size x="0" y="0"/>
+                  <Anchors>
+                    <Anchor point="TOP" relativePoint="BOTTOM" relativeTo="$parentRewardsContent" x="0" y="-5"/>
+                  </Anchors>
+                  <Color r="0.95" g="0.95" b="0.95"/>
+                </FontString>
+                <FontString name="$parentRewardsContentChoose" parentKey="RewardsContentChoose" inherits="GameFontNormal" justifyH="LEFT" justifyV="TOP">
+                  <Size x="310" y="0"/>
+                  <Anchors>
+                    <Anchor point="TOP" relativePoint="BOTTOM" relativeTo="$parentRewardsTextChoose" x="0" y="-5"/>
+                    <!--<Anchor point="LEFT" x="10" y="0"/>-->
+                    <!--<Anchor point="RIGHT" x="-10" y="0"/>-->
+                  </Anchors>
+                  <Color r="0.95" g="0.95" b="0.95"/>
+                </FontString>
 							</Layer>
 						</Layers>
 					</Frame>

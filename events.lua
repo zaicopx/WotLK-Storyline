@@ -296,6 +296,11 @@ local function getQuestButton(parentFrame)
 		available.Name:SetPoint("TOPLEFT", available, "TOPLEFT", 43, 0);
 		available.Name:SetJustifyH("LEFT");
 		available.Name:SetJustifyV("MIDDLE");
+		available.Count = available:CreateFontString("", "ARTWORK", "NumberFontNormal");
+		available.Count:SetSize(38, 12);
+		available.Count:SetPoint("BOTTOMRIGHT", available.Icon, -1, 2);
+		available.Count:SetJustifyH("RIGHT");
+		available.Count:SetJustifyV("MIDDLE");
 		tinsert(itemButtons, available);
 	end
 	available:SetParent(parentFrame);
@@ -309,7 +314,7 @@ local function decorateItemButton(button, index, type, texture, name, numItems, 
 	button.type = type;
 	button.Icon:SetTexture(texture);
 	button.Name:SetText(name);
-	button.Count = (numItems > 1 and numItems or "");
+	button.Count:SetText(numItems > 1 and numItems or "");
 	if not isUsable then
 		button.Icon:SetVertexColor(1, 0, 0);
 	end
@@ -533,6 +538,79 @@ local function setObjectiveText(fontString, text, anchor)
 	return fontString:GetHeight() + HOVERED_FRAME_TEXT_MARGIN;
 end
 
+local function AddQuestItemReward(i, frame, name, texture, numItems, quality, isUsable, questType)
+	local totalButtonHeight = 0;
+	local prevButtonHeight = 0;
+	local prevButtonWidth = 0;
+	local button = getQuestButton(Storyline_NPCFrameObjectivesContent);
+	decorateItemButton(button, i, questType, texture, name, numItems, isUsable);
+	prevButtonHeight = button:GetHeight();
+	prevButtonWidth = button:GetWidth();
+	-- @robinsch: hack ...
+	if i == 1 then
+		button:SetPoint("TOPLEFT", frame, "BOTTOMLEFT", HOVERED_FRAME_TEXT_MARGIN, 0);
+	elseif i == 2 then
+		button:SetPoint("TOPLEFT", frame, "BOTTOMLEFT", HOVERED_FRAME_TEXT_MARGIN + prevButtonWidth, 0);
+	elseif i == 3 then
+		button:SetPoint("TOPLEFT", frame, "BOTTOMLEFT", HOVERED_FRAME_TEXT_MARGIN, -prevButtonHeight);
+	elseif i == 4 then
+		button:SetPoint("TOPLEFT", frame, "BOTTOMLEFT", HOVERED_FRAME_TEXT_MARGIN + prevButtonWidth, -prevButtonHeight);
+	elseif i == 5 then
+		button:SetPoint("TOPLEFT", frame, "BOTTOMLEFT", HOVERED_FRAME_TEXT_MARGIN, -(prevButtonHeight * 2));
+	elseif i == 6 then
+		button:SetPoint("TOPLEFT", frame, "BOTTOMLEFT", HOVERED_FRAME_TEXT_MARGIN + prevButtonWidth, -(prevButtonHeight * 2));
+	end
+	button:Show()
+
+	-- @robinsch: check if we have added new row
+	if (i % 2 == 0) then
+		return 0
+	end
+	
+	return button:GetHeight();
+end
+
+local function ShowQuestDetailRewards()
+	local text = "";
+
+	Storyline_NPCFrameObjectivesContent.Rewards:Show();
+
+	local money = GetRewardMoney();
+	if money > 0 then
+		local moneyString = GetCoinTextureString(money);
+		text = text.."You will receive: "..moneyString.."\n";
+	end
+
+	local xp = GetRewardXP();
+	if xp > 0 then
+		local xp_pct = xp / UnitXPMax("player") * 100;
+		text = text.."Experience: "..xp.." ("..math.floor(xp_pct + 0.5).."%)\n";
+	end
+
+	local itemButtonsHeight = 0;
+	local itemButtonIndex = 1;
+	for i = 1, GetNumQuestRewards() do
+		local name, texture, numItems, quality, isUsable = GetQuestItemInfo("reward", i);
+		itemButtonsHeight = itemButtonsHeight + AddQuestItemReward(itemButtonIndex, Storyline_NPCFrameObjectivesContent.RewardsContent, name, texture, numItems, quality, isUsable, "reward");
+		itemButtonIndex = itemButtonIndex + 1;
+	end
+
+	if GetNumQuestChoices() > 1 then
+		Storyline_NPCFrameObjectivesContent.RewardsTextChoose:Show();
+		Storyline_NPCFrameObjectivesContent.RewardsTextChoose:SetPoint("TOP", Storyline_NPCFrameObjectivesContent.RewardsContent, "BOTTOM", 0, 0);
+	end
+
+	for i = 1, GetNumQuestChoices() do
+		local name, texture, numItems, quality, isUsable = GetQuestItemInfo("choice", i);
+		itemButtonsHeight = itemButtonsHeight + AddQuestItemReward(itemButtonIndex, Storyline_NPCFrameObjectivesContent.RewardsContentChoose, name, texture, numItems, quality, isUsable, "choice");
+			itemButtonIndex = itemButtonIndex + 1;
+	end
+
+	Storyline_NPCFrameObjectivesContent.RewardsContent:SetText(text);
+
+	return Storyline_NPCFrameObjectivesContent.RewardsContent:GetHeight() + itemButtonsHeight;
+end
+
 eventHandlers["QUEST_DETAIL"] = function()
 
 	local previousText = Storyline_NPCFrameObjectivesContent.Title;
@@ -549,7 +627,10 @@ eventHandlers["QUEST_DETAIL"] = function()
 	local groupNum = GetSuggestedGroupNum();
 	if groupNum > 0 then
 		contentHeight = contentHeight +  setObjectiveText(Storyline_NPCFrameObjectivesContent.GroupSuggestion, format(QUEST_SUGGESTED_GROUP_NUM, groupNum), previousText);
-	end
+	end	
+
+	-- @robinsch: backported rewards
+	contentHeight = contentHeight + ShowQuestDetailRewards();
 
 	-- Add some margin on the bottom
 	contentHeight = contentHeight + HOVERED_FRAME_TEXT_MARGIN;
@@ -838,42 +919,15 @@ eventHandlers["QUEST_COMPLETE"] = function(eventInfo)
 		Storyline_NPCFrameRewards.Content.RewardTextSpell:SetPoint("TOP", previousForChoice, "BOTTOM", 0, -5);
 		contentHeight = contentHeight + 18;
 		previousForChoice = Storyline_NPCFrameRewards.Content.RewardTextSpell;
-
-		--CHANGES:Lanrutcon:No need to have this condition. Garrison was implemented in 6.0
-		--[[
-		if garrFollowerID then
-			local questItem = Storyline_NPCFrameRewards.Content.FollowerFrame;
-			questItem:SetPoint("TOP", previousForChoice, "BOTTOM", 0, -5);
-			questItem:Show();
-			questItem.ID = garrFollowerID;
-			local followerInfo = GetFollowerInfo(garrFollowerID);
-			questItem.Name:SetText(followerInfo.name);
-			questItem.PortraitFrame.Level:SetText(followerInfo.level);
-			questItem.Class:SetAtlas(followerInfo.classAtlas);
-			local color = ITEM_QUALITY_COLORS[followerInfo.quality];
-			questItem.PortraitFrame.PortraitRingQuality:SetVertexColor(color.r, color.g, color.b);
-			questItem.PortraitFrame.LevelBorder:SetVertexColor(color.r, color.g, color.b);
-			GarrisonFollowerPortrait_Set(questItem.PortraitFrame.Portrait, followerInfo.portraitIconID);
-			contentHeight = contentHeight + 70;
-			previousForChoice = questItem;
-		]]--
-		--else
-			local questItem = Storyline_NPCFrameRewards.Content.SpellFrame;
-			questItem:Show();
-			questItem.Icon:SetTexture(texture);
-			questItem.Name:SetText(name);
-			contentHeight = contentHeight + 40;
-			previousForChoice = questItem;
-		--end
+		local questItem = Storyline_NPCFrameRewards.Content.SpellFrame;
+		questItem:Show();
+		questItem.Icon:SetTexture(texture);
+		questItem.Name:SetText(name);
+		contentHeight = contentHeight + 40;
+		previousForChoice = questItem;
 	end
 
 	showQuestPortraitFrame();
-	
-	--CHANGE:TODO:Shadovv: There is no need for NPCFrameRewards, quest does not give any rewards
-	if (questHasRewards == false) then
-		--Storyline_NPCFrameRewards:Hide();
-		--GetQuestReward();
-	end;
 
 	-- Add some margin on the bottom
 	contentHeight = contentHeight + HOVERED_FRAME_TEXT_MARGIN;
@@ -903,6 +957,10 @@ local function handleEventSpecifics(event, texts, textIndex, eventInfo)
 	Storyline_NPCFrameObjectivesContent.GroupSuggestion:Hide();
 	Storyline_NPCFrameObjectivesContent.Objectives:SetText('');
 	Storyline_NPCFrameObjectivesContent.Objectives:Hide();
+	Storyline_NPCFrameObjectivesContent.Rewards:Hide();
+	Storyline_NPCFrameObjectivesContent.RewardsContent:SetText("");
+	Storyline_NPCFrameObjectivesContent.RewardsContentChoose:SetText("");
+	Storyline_NPCFrameObjectivesContent.RewardsTextChoose:Hide();
 	Storyline_NPCFrameRewards.Content:Hide();
 	Storyline_NPCFrameRewards.Content.RewardText2:Hide();
 	Storyline_NPCFrameRewards.Content.RewardText3:Hide();
@@ -1161,7 +1219,9 @@ function Storyline_API.initEventsStructure()
 
 	--Storyline_NPCFrameObjectives:SetScript("OnClick", function() EVENT_INFO["QUEST_PROGRESS"].finishMethod(); end);
 	Storyline_NPCFrameObjectivesContent.Title:SetText(QUEST_OBJECTIVES);
+	Storyline_NPCFrameObjectivesContent.Rewards:SetText(QUEST_REWARDS);
 	Storyline_NPCFrameObjectivesContent.RequiredItemText:SetText(TURN_IN_ITEMS);
+	Storyline_NPCFrameObjectivesContent.RewardsTextChoose:SetText(REWARD_CHOICES);
 
 	Storyline_NPCFrameRewardsItem:SetScript("OnClick", function() EVENT_INFO["QUEST_COMPLETE"].finishMethod(); end);
 	Storyline_NPCFrameRewards.Content.RewardText1:SetText(REWARD_ITEMS_ONLY);
