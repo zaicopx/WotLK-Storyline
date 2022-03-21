@@ -26,6 +26,15 @@
 
 	<GameTooltip name="Storyline_MainTooltip" frameStrata="TOOLTIP" hidden="false" parent="UIParent" inherits="GameTooltipTemplate"/>
 
+  <FontString name="Storyline_RewardsHeader" inherits="GameFontNormal" justifyH="LEFT" justifyV="TOP" virtual="true">
+    <Size x="0" y="20"/>
+    <Anchors>
+      <Anchor point="LEFT" x="10" y="0"/>
+      <Anchor point="RIGHT" x="-10" y="0"/>
+    </Anchors>
+    <Color r="0.95" g="0.65" b="0"/>
+  </FontString>
+
 	<!-- Common close button  -->
 	<Button name="Storyline_CloseButton" inherits="UIPanelCloseButton" virtual="true">
 		<Scripts>
