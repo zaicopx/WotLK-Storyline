@@ -598,6 +598,7 @@ local function ShowQuestDetailRewards()
 	if GetNumQuestChoices() > 1 then
 		Storyline_NPCFrameObjectivesContent.RewardsTextChoose:Show();
 		Storyline_NPCFrameObjectivesContent.RewardsTextChoose:SetPoint("TOP", Storyline_NPCFrameObjectivesContent.RewardsContent, "BOTTOM", 0, 0);
+		itemButtonsHeight = itemButtonsHeight + HOVERED_FRAME_TITLE_MARGIN + Storyline_NPCFrameObjectivesContent.RewardsTextChoose:GetHeight();
 	end
 
 	for i = 1, GetNumQuestChoices() do

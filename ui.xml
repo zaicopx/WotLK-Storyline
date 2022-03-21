@@ -357,7 +357,9 @@
                 <FontString name="$parentRewardsTextChoose" parentKey="RewardsTextChoose" inherits="GameFontNormal" justifyH="LEFT" justifyV="TOP">
                   <Size x="0" y="0"/>
                   <Anchors>
-                    <Anchor point="TOP" relativePoint="BOTTOM" relativeTo="$parentRewardsContent" x="0" y="-5"/>
+                    <Anchor point="TOP" relativePoint="BOTTOM" relativeTo="$parentRewardsContent"/>
+                    <Anchor point="LEFT" x="10" y="0"/>
+                    <Anchor point="RIGHT" x="-10" y="0"/>
                   </Anchors>
                   <Color r="0.95" g="0.95" b="0.95"/>
                 </FontString>
