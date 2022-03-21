@@ -561,11 +561,6 @@ local function AddQuestItemReward(i, frame, name, texture, numItems, quality, is
 		button:SetPoint("TOPLEFT", frame, "BOTTOMLEFT", HOVERED_FRAME_TEXT_MARGIN + prevButtonWidth, -(prevButtonHeight * 2));
 	end
 	button:Show()
-
-	-- @robinsch: check if we have added new row
-	if (i % 2 == 0) then
-		return 0
-	end
 	
 	return button:GetHeight();
 end
@@ -591,7 +586,10 @@ local function ShowQuestDetailRewards()
 	local itemButtonIndex = 1;
 	for i = 1, GetNumQuestRewards() do
 		local name, texture, numItems, quality, isUsable = GetQuestItemInfo("reward", i);
-		itemButtonsHeight = itemButtonsHeight + AddQuestItemReward(itemButtonIndex, Storyline_NPCFrameObjectivesContent.RewardsContent, name, texture, numItems, quality, isUsable, "reward");
+		local buttonHeight = AddQuestItemReward(itemButtonIndex, Storyline_NPCFrameObjectivesContent.RewardsContent, name, texture, numItems, quality, isUsable, "reward");
+		if i > 2 and i % 2 == 0 then
+			itemButtonsHeight = itemButtonsHeight + buttonHeight
+		end
 		itemButtonIndex = itemButtonIndex + 1;
 	end
 
@@ -599,12 +597,20 @@ local function ShowQuestDetailRewards()
 		Storyline_NPCFrameObjectivesContent.RewardsTextChoose:Show();
 		Storyline_NPCFrameObjectivesContent.RewardsTextChoose:SetPoint("TOP", Storyline_NPCFrameObjectivesContent.RewardsContent, "BOTTOM", 0, 0);
 		itemButtonsHeight = itemButtonsHeight + HOVERED_FRAME_TITLE_MARGIN + Storyline_NPCFrameObjectivesContent.RewardsTextChoose:GetHeight();
+
+		for i = 1, GetNumQuestChoices() do
+			local name, texture, numItems, quality, isUsable = GetQuestItemInfo("choice", i);
+			local buttonHeight = AddQuestItemReward(itemButtonIndex, Storyline_NPCFrameObjectivesContent.RewardsContentChoose, name, texture, numItems, quality, isUsable, "choice");
+			if i % 2 == 0 then
+				itemButtonsHeight = itemButtonsHeight + buttonHeight
+			end
+			itemButtonIndex = itemButtonIndex + 1;
+		end
 	end
 
-	for i = 1, GetNumQuestChoices() do
-		local name, texture, numItems, quality, isUsable = GetQuestItemInfo("choice", i);
-		itemButtonsHeight = itemButtonsHeight + AddQuestItemReward(itemButtonIndex, Storyline_NPCFrameObjectivesContent.RewardsContentChoose, name, texture, numItems, quality, isUsable, "choice");
-			itemButtonIndex = itemButtonIndex + 1;
+	-- @robinsch: hack for additional spacing in some cases
+	if GetNumQuestRewards() then
+		itemButtonsHeight = itemButtonsHeight - 30;
 	end
 
 	Storyline_NPCFrameObjectivesContent.RewardsContent:SetText(text);

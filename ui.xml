@@ -205,7 +205,7 @@
 
 	<Frame name="Storyline_NPCFrame" inherits="Storyline_StandardParchmentFrame" toplevel="true" parent="UIParent"
 		   frameStrata="HIGH" enableMouse="true" clampedToScreen="true" hidden="true" movable="true">
-		<Size x="700" y="450"/>
+		<Size x="1000" y="650"/>
 		<Layers>
 			<Layer level="BORDER">
 				<Texture name="Storyline_NPCFrameBG" file="Interface\AddOns\Storyline\Artwork\DRESSUPFRAME\DressUpBackground-NightElf1" alpha="0.5">

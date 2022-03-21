@@ -86,7 +86,7 @@ function Storyline_API.startDialog(targetType, fullText, event, eventInfo)
 
 
 	local guid = UnitGUID(targetType);
-	local type, zero, server_id, instance_id, zone_uid, npc_id, spawn_uid = strsplit("-", guid or "");
+	local _, zero, server_id, instance_id, zone_uid, npc_id, spawn_uid = strsplit("-", guid or "");
 	-- Dirty if to fix the flavor text appearing on naval mission table because Blizzard…
 	if npc_id == "94399" then
 		SelectGossipOption(1);
@@ -153,24 +153,26 @@ function Storyline_API.startDialog(targetType, fullText, event, eventInfo)
 	end
 	Storyline_NPCFrameModelsYou.model = Storyline_NPCFrameModelsYou:GetModel();
 
-	if Storyline_NPCFrameModelsYou.model then
-		Storyline_NPCFrameDebugModelYou:SetText(Storyline_NPCFrameModelsYou.model:gsub("\\", "\\\\"));
-	end
-	if Storyline_NPCFrameModelsMe.model then
-		Storyline_NPCFrameDebugModelMe:SetText(Storyline_NPCFrameModelsMe.model:gsub("\\", "\\\\"));
-	end
+	if Storyline_NPCFrameModelsYou.model and type(Storyline_NPCFrameModelsYou.model) == "string" then
+		if Storyline_NPCFrameModelsYou.model then
+			Storyline_NPCFrameDebugModelYou:SetText(Storyline_NPCFrameModelsYou.model:gsub("\\", "\\\\"));
+		end
+		if Storyline_NPCFrameModelsMe.model then
+			Storyline_NPCFrameDebugModelMe:SetText(Storyline_NPCFrameModelsMe.model:gsub("\\", "\\\\"));
+		end
 
-	local scale = 0;
-	if Storyline_NPCFrameModelsYou.model and Storyline_NPCFrameModelsMe.model then
-		local key, invertKey = Storyline_NPCFrameModelsMe.model .. "~" .. Storyline_NPCFrameModelsYou.model, Storyline_NPCFrameModelsYou.model .. "~" .. Storyline_NPCFrameModelsMe.model;
-		scale = Storyline_Data.debug.scaling[key] or Storyline_SCALE_MAPPING[key] or -(Storyline_Data.debug.scaling[invertKey] or Storyline_SCALE_MAPPING[invertKey] or 0);
-	end
-	Storyline_NPCFrameDebugScaleSlider:SetValue(scale);
+		local scale = 0;
+		if Storyline_NPCFrameModelsYou.model and Storyline_NPCFrameModelsMe.model then
+			local key, invertKey = Storyline_NPCFrameModelsMe.model .. "~" .. Storyline_NPCFrameModelsYou.model, Storyline_NPCFrameModelsYou.model .. "~" .. Storyline_NPCFrameModelsMe.model;
+			scale = Storyline_Data.debug.scaling[key] or Storyline_SCALE_MAPPING[key] or -(Storyline_Data.debug.scaling[invertKey] or Storyline_SCALE_MAPPING[invertKey] or 0);
+		end
+		Storyline_NPCFrameDebugScaleSlider:SetValue(scale);
 	
-	--CHANGE:Shadovv: changes position of some creatures defined in structures
-	if (Storyline_C_POSITION[Storyline_NPCFrameModelsYou.model] ~= nil) then
-		Storyline_NPCFrameModelsYou:SetPosition(Storyline_C_POSITION[Storyline_NPCFrameModelsYou.model][1],Storyline_C_POSITION[Storyline_NPCFrameModelsYou.model][2],Storyline_C_POSITION[Storyline_NPCFrameModelsYou.model][3]);
-	end;
+		--CHANGE:Shadovv: changes position of some creatures defined in structures
+		if (Storyline_C_POSITION[Storyline_NPCFrameModelsYou.model] ~= nil) then
+			Storyline_NPCFrameModelsYou:SetPosition(Storyline_C_POSITION[Storyline_NPCFrameModelsYou.model][1],Storyline_C_POSITION[Storyline_NPCFrameModelsYou.model][2],Storyline_C_POSITION[Storyline_NPCFrameModelsYou.model][3]);
+		end;
+	end
 
 	fullText = fullText:gsub(LINE_FEED_CODE .. "+", "\n");
 	fullText = fullText:gsub(WEIRD_LINE_BREAK, "\n");
