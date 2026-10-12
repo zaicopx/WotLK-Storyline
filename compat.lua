@@ -47,8 +47,11 @@ end
 
 local function ReadyButton(name)
 	local b = _G[name]
-	if b and b.IsVisible and b:IsVisible() and b:IsEnabled() then return b end
+	-- S.IsOn: IsEnabled() returns 1 / 0 in 3.3.5a and 0 is "true" in Lua. A disabled button
+	-- ignores Click(), so the old check silently did nothing for a disabled Accept button.
+	if b and b.IsVisible and b:IsVisible() and S.IsOn(b) then return b end
 end
+C.ReadyButton = ReadyButton
 
 -- Click the original button when it is usable (keeps other addons' hooks
 -- working), otherwise call the API function directly. The function is looked
@@ -56,10 +59,69 @@ end
 function C.ClickOrCall(buttonName, funcName)
 	local b = ReadyButton(buttonName)
 	if b then
-		b:Click()
-	else
-		S.API(funcName)
+		local ok, err = pcall(b.Click, b)
+		if ok then return end
+		S.Print("|cffff5555" .. buttonName .. " click failed:|r " .. tostring(err))
 	end
+	S.API(funcName)
+end
+
+------------------------------------------------------------------------
+-- Accepting a quest
+------------------------------------------------------------------------
+-- What the original Accept button does (PvP quests ask for confirmation, auto-accept quests
+-- are acknowledged), without needing the button.
+local function acceptDirect()
+	local frame = _G.QuestFrame
+	if S.API("QuestFlagsPVP") then
+		if frame then frame.dialog = S.API("StaticPopup_Show", "CONFIRM_ACCEPT_PVP_QUEST") end
+	elseif frame and frame.autoQuest then
+		S.API("AcknowledgeAutoAcceptQuest")
+	else
+		S.API("AcceptQuest")
+	end
+end
+
+local function questInLog(title)
+	if not title or title == "" then return false end
+	for i = 1, (S.API("GetNumQuestLogEntries") or 0) do
+		local name, _, _, _, isHeader = S.API("GetQuestLogTitle", i)
+		if name and not isHeader and name == title then return true end
+	end
+	return false
+end
+
+local function detailStillOpen()
+	local q, p = _G.QuestFrame, _G.QuestFrameDetailPanel
+	return q and q:IsShown() and p and p:IsShown()
+end
+
+-- Click the original Accept button; if it is disabled / missing / did nothing, accept directly.
+-- The result is checked: when the dialog is still open and the quest is not in the log a moment
+-- later, the quest is accepted directly, and if even that fails the state is printed in the chat.
+function C.AcceptQuest()
+	local title = S.API("GetTitleText")
+	local button = ReadyButton("QuestFrameAcceptButton")
+	local clicked = false
+	if button then
+		local ok, err = pcall(button.Click, button)
+		clicked = ok
+		if not ok then S.Print("|cffff5555Accept button click failed:|r " .. tostring(err)) end
+	end
+	if not clicked then acceptDirect() end
+
+	S.After(0.3, function()
+		if detailStillOpen() and not questInLog(title) then acceptDirect() end
+	end)
+	S.After(0.85, function()
+		if detailStillOpen() and not questInLog(title) then
+			local b = _G.QuestFrameAcceptButton
+			S.Print("|cffff5555the quest was not accepted.|r Please send this line: accept button: "
+				.. (b and ("shown=" .. tostring(b:IsVisible() and true or false) .. " enabled=" .. tostring(b:IsEnabled())) or "missing")
+				.. " | PvP quest: " .. tostring(S.API("QuestFlagsPVP") and true or false)
+				.. " | auto quest: " .. tostring(_G.QuestFrame and _G.QuestFrame.autoQuest and true or false))
+		end
+	end)
 end
 
 ------------------------------------------------------------------------

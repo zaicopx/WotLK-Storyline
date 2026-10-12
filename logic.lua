@@ -35,13 +35,42 @@ function S.CancelPendingClose()
 end
 
 -- The server often sends "closed" and "open" events back to back when moving from one
--- dialog to the next, so closing is debounced.
+-- dialog to the next (turning in a quest and getting the next one of the chain, ...), and
+-- sometimes a late "finished" arrives AFTER the next dialog already opened. So closing is
+-- debounced and only happens when the original dialog has really been closed.
+local function originalDialogOpen(s)
+	if s.kind == "demo" then return false end
+	if s.kind == "gossip" then return GossipFrame and GossipFrame:IsShown() end
+	return QuestFrame and QuestFrame:IsShown()
+end
+
 function S.SchedulePendingClose()
 	S.CancelPendingClose()
 	pendingClose = S.After(0.25, function()
 		pendingClose = nil
+		local s = S.session
+		if not s then return end
+		if originalDialogOpen(s) then return end   -- a stray event, the conversation goes on
 		S.EndSession(false)
 	end)
+end
+
+-- After a session ended because of the server: if an original dialog is still open (we lost it
+-- to a stray event), show it through Storyline again instead of leaving the original window.
+function S.Reconcile()
+	if S.session or not S.db.hideOriginalFrames then return false end
+	if S.IsClosing() then return false end
+	if S.db.disableInInstances and IsInInstance() then return false end
+	if QuestFrame and QuestFrame:IsShown() then
+		if QuestFrameDetailPanel and QuestFrameDetailPanel:IsShown() then S.OnQuestDetail(); return true end
+		if QuestFrameProgressPanel and QuestFrameProgressPanel:IsShown() then S.OnQuestProgress(); return true end
+		if QuestFrameRewardPanel and QuestFrameRewardPanel:IsShown() then S.OnQuestComplete(); return true end
+		if QuestFrameGreetingPanel and QuestFrameGreetingPanel:IsShown() then S.OnQuestGreeting(); return true end
+	elseif GossipFrame and GossipFrame:IsShown() then
+		S.OnGossipShow()
+		return true
+	end
+	return false
 end
 
 function S.EndSession(callServer)
@@ -56,20 +85,76 @@ function S.EndSession(callServer)
 		end
 	end
 	UI.Hide()
+	local serverDriven = not callServer
 	S.After(0.3, function()
-		if not S.session then S.Compat.Suppress(false) end
+		if S.session then return end
+		if serverDriven and S.Reconcile() then return end
+		S.Compat.Suppress(false)
+	end)
+end
+
+-- True for a moment after the player closed the window: events that arrive in that moment belong
+-- to the dialog that was just closed and must not open the window again.
+function S.IsClosing()
+	return S.closeGuardUntil ~= nil and GetTime() < S.closeGuardUntil
+end
+
+local function hideOriginal(name)
+	local f = _G[name]
+	if f and f:IsShown() then
+		pcall(HideUIPanel, f)
+		if f:IsShown() then pcall(f.Hide, f) end
+	end
+end
+
+-- Closing by the player (X button, ESC, /storyline close, last dialog line). This never depends on
+-- the state of the original Blizzard windows or on any server answer: every step is protected, the
+-- Storyline window is hidden at once, and the original dialog is closed as well.
+function S.ForceClose()
+	S.CancelPendingClose()
+	S.closeGuardUntil = GetTime() + 0.4
+	local s = S.session
+	S.session = nil
+	if s and s.kind == "gossip" then
+		pcall(S.API, "CloseGossip")
+	elseif s and s.kind ~= "demo" then
+		pcall(S.API, "CloseQuest")
+	end
+	hideOriginal("QuestFrame")
+	hideOriginal("GossipFrame")
+	if UI.frame then
+		UI.chat.start = nil
+		UI.HideHovers()
+		UI.Hide(true)
+		if UI.frame:IsShown() then UI.frame:Hide() end   -- belt and braces
+	end
+	S.After(0.35, function()
+		if S.session then return end
+		S.Compat.Suppress(false)
 	end)
 end
 
 function S.Close()
-	S.EndSession(true)
+	S.ForceClose()
+end
+
+-- After accepting / declining: if the dialog is still the same one a moment later (the server did
+-- not close it, or the original window did not report that it was closed), close it anyway. When
+-- the server offered the next quest of a chain, the session is a different one and is left alone.
+local function closeAfterAction(delay)
+	local s = S.session
+	if not s then return end
+	S.After(delay or 0.7, function()
+		if S.session ~= s then return end
+		S.ForceClose()
+	end)
 end
 
 -- Called by the frame's OnHide (ESC key, close button, fade finished).
 function S.OnFrameHidden()
 	UI.chat.start = nil
 	pcall(ClearOverrideBindings, UI.frame)
-	if S.session then S.EndSession(true) end
+	if S.session then S.ForceClose() end
 end
 
 -- If anything in our code errors, hand the original Blizzard windows back so the player
@@ -164,7 +249,7 @@ function S.Advance()
 	if not S.session then return end
 	if UI.IsTyping() then
 		UI.FinishTyping()
-	elseif UI.nextButton:IsEnabled() then   -- disabled while a reward has to be picked
+	elseif S.IsOn(UI.nextButton) then   -- disabled while a reward has to be picked
 		S.PlayNext()
 	end
 end
@@ -182,11 +267,13 @@ end
 -- Quest actions (through the original buttons, see compat.lua)
 ------------------------------------------------------------------------
 function S.Accept()
-	S.Compat.ClickOrCall("QuestFrameAcceptButton", "AcceptQuest")
+	closeAfterAction(1.1)   -- after the accept was checked (compat.lua)
+	S.Compat.AcceptQuest()
 	S.SchedulePendingClose()   -- some quests do not close the dialog by themselves
 end
 
 function S.Decline()
+	closeAfterAction(0.7)
 	S.Compat.ClickOrCall("QuestFrameDeclineButton", "DeclineQuest")
 	S.SchedulePendingClose()
 end

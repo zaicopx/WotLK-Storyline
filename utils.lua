@@ -100,3 +100,11 @@ function S.API(name, ...)
 	local fn = _G[name]
 	if type(fn) == "function" then return fn(...) end
 end
+
+-- In 3.3.5a Button:IsEnabled() returns 1 or 0 (not true / false), and 0 is "true" in Lua, so
+-- `if button:IsEnabled() then` is ALWAYS true. Use this instead.
+function S.IsOn(button)
+	if not button or not button.IsEnabled then return false end
+	local enabled = button:IsEnabled()
+	return (enabled and enabled ~= 0) and true or false
+end

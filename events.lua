@@ -14,6 +14,7 @@ frame:SetScript("OnEvent", function(_, event, ...)
 	local ok, err = pcall(handler, ...)
 	if not ok then
 		geterrorhandler()(err)
+		S.Print("|cffff5555error in " .. tostring(event) .. ":|r " .. tostring(err))
 		if S.db then S.FailOpen() end
 	end
 end)
@@ -40,6 +41,7 @@ end
 
 -- Dialog-opening events: optionally leave dialogs inside instances to the original frames.
 local function enabledHere()
+	if S.IsClosing() then return false end   -- events of the dialog the player just closed
 	if S.db.disableInInstances and IsInInstance() then
 		S.Compat.Suppress(false)
 		return false

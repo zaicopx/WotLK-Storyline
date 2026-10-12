@@ -1,5 +1,46 @@
 # Changelog
 
+## 3.3.1
+- Fix: accepting a quest with the green check mark did nothing. In 3.3.5a `Button:IsEnabled()` returns
+  1 or 0 and 0 counts as "true" in Lua, so a DISABLED original Accept button was treated as usable;
+  it was "clicked" (ignored by the game) and `AcceptQuest()` was never called. A disabled button now
+  means the quest is accepted directly (PvP-quest confirmation and auto-accept quests included).
+- The result is checked: if the quest window is still open and the quest is not in the quest log 0.3 s
+  later, the quest is accepted directly; if that fails too, a diagnostic line is printed in the chat.
+- The same 1/0 mistake in the dialog's "next" button (it was never really disabled while a reward
+  had to be picked) is fixed.
+- `/storyline debug` also prints the state of the original Accept button.
+
+## 3.3.0
+- Fix: the dialog could not be closed after a quest had been chosen. Closing by the player (X button,
+  ESC, `/storyline close`) now never depends on the original Blizzard window or on a server answer:
+  the Storyline window is hidden at once, the original quest / gossip window is closed too, and
+  events that still arrive for the dialog that was just closed can no longer open it again.
+- Fix: after accepting / declining a quest the window could stay open when the original quest window
+  was not reported as closed. If it is still the same dialog 0.7 s later it is closed anyway (the next
+  quest of a chain is a different dialog and is left alone).
+- Fix: a faded-out window that never finished fading is hidden by a watchdog.
+- The X / lock / settings / resize buttons are on a higher frame strata, so no panel inside the window
+  or frame of another addon can swallow their clicks.
+- The mouse wheel no longer resizes the NPC / your character by default. It is now an option
+  ("Mouse wheel resizes the NPC", `/storyline wheel`), off by default. Models already resized by an
+  accidental scroll: `/storyline scale reset`.
+- New: "Dim strength" slider (0-100 %) in the options panel and `/storyline dim <0-100>`. Moving the
+  slider switches dimming on, shows a short preview when no dialog is open, and updates live while a
+  dialog is open.
+- New diagnostics: `/storyline close` (emergency close), `/storyline debug` (state of the windows),
+  `/storyline focus` (prints which frame is under the mouse after 4 s).
+
+## 3.2.0
+- Fix: the original quest window appeared after taking / turning in a quest. A late
+  QUEST_FINISHED (sent while closing the previous quest of a chain) closed the next Storyline
+  dialog. Closing now only happens when the original dialog is really closed, and if an original
+  dialog is still open after Storyline ended, it is shown through Storyline again.
+- Errors in the addon are now also printed in the chat (most players have Lua error popups off).
+- Models turning towards each other: a model camera is attached to the model, so rotating the model
+  with a camera selected had no visible effect. Characters now use the free camera (rotation is
+  applied last); creatures keep camera 0. `/storyline camera all auto` restores the old behaviour.
+
 ## 3.1.0
 - Camera is chosen per model: character models (humans, elves, dwarves...) use camera 1, creatures
   (treants, bears, giants...) use camera 0, so big NPCs show full body and normal NPCs stay normal.

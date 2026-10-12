@@ -232,18 +232,29 @@ function UI.ApplyScale()
 	end
 	UI.scaleSaved = scale ~= nil
 	UI.scale = scale or guessScale()
-	resizeModels(UI.scale)
+	if UI.appliedScale ~= UI.scale then
+		UI.appliedScale = UI.scale
+		resizeModels(UI.scale)
+	end
 end
 
 -- Mouse wheel over the models: make the NPC model smaller / bigger relative to yours.
 -- Saved per pair of models.
 local function onModelsScroll(_, delta)
+	if not S.db.scrollScale then return end
 	local key = currentScaleKeys()
 	if not key then return end
 	local scale = max(-190, min(190, (UI.scale or 0) + delta * 10))
 	S.scaling[key] = scale
 	UI.scale, UI.scaleSaved = scale, true
+	UI.appliedScale = scale
 	resizeModels(scale)
+end
+
+-- The wheel handler is only attached while the option is on, so otherwise scrolling over the
+-- window does nothing to the models.
+function UI.ApplyWheelMode()
+	if UI.models then UI.models:EnableMouseWheel(S.db.scrollScale and true or false) end
 end
 
 function UI.ResetScale()
@@ -259,58 +270,70 @@ end
 local LIGHT_ME = { 1, 0, 0, -1, -1, 1, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 }
 local LIGHT_YOU = { 1, 0, 0, 1, 1, 1, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 }
 
-local function prepareModel(m, facing, light, camera)
+-- camera: a number (index of a camera stored in the model) or nil = the free default camera.
+-- A model camera is attached to the model, so turning the model has no visible effect while one
+-- is active; with the free camera SetFacing / SetRotation really turn the character.
+local function applyModel(m, facing, light, camera, position)
 	pcall(m.SetLight, m, unpack(light))
 	if camera then pcall(m.SetCamera, m, camera) end
+	if position then
+		pcall(m.SetPosition, m, position[1], position[2], position[3])
+	end
+	-- the rotation goes last: moving / re-lighting the model can reset it
 	if m.SetRotation then pcall(m.SetRotation, m, facing) end
 	if m.SetFacing then pcall(m.SetFacing, m, facing) end
 end
 
--- Every model has its own cameras: for character models (humans, elves, dwarves...) camera 1
--- shows the whole body, for creatures (treants, bears...) camera 0 does.
+-- Which camera for an NPC model. Characters (humans, elves, dwarves...) use the free camera so they
+-- can be turned; creatures (treants, bears...) use their camera 0 which shows the whole body.
 local function cameraFor(path)
 	local overrides = S.cameras
-	if path and overrides[path] ~= nil then return overrides[path] end
-	local mode = tonumber(S.db.cameraMode)
-	if mode then return mode end
-	if path and not tostring(path):lower():find("^character") then return 0 end
-	return 1
+	if path and overrides[path] ~= nil then
+		return tonumber(overrides[path])   -- nil = free
+	end
+	local mode = S.db.cameraMode
+	if tonumber(mode) then return tonumber(mode) end
+	local character = not path or tostring(path):lower():find("^character")
+	if mode == "auto" then return character and 1 or 0 end   -- old behaviour (no turning)
+	return (not character) and 0 or nil                       -- "free"
 end
 UI.cameraFor = cameraFor
 
--- The client resets camera / facing while a model is still loading, so everything is
--- applied again a moment later (and the model paths, needed for the scale data, are read then).
 local function refreshModels(final)
 	local angle = S.db.facingAngle or 0.75
 	local flip = S.db.flipFacing and -1 or 1
 	local me, you = UI.me, UI.you
-	if me:IsShown() then
-		me.model = me:GetModel() or me.model
-		prepareModel(me, angle * flip, LIGHT_ME, 1)
-		pcall(me.SetPosition, me, 0, 0, 0)
-	end
+
 	if you:IsShown() then
 		you.model = you:GetModel() or you.model
-		you.cameraUsed = cameraFor(you.model)
-		prepareModel(you, -angle * flip, LIGHT_YOU, you.cameraUsed)
-		local pos = you.model and Storyline_C_POSITION and Storyline_C_POSITION[you.model]
-		if pos then pcall(you.SetPosition, you, pos[1], pos[2], pos[3]) else pcall(you.SetPosition, you, 0, 0, 0) end
-		-- hidden until the model is known, so the wrong camera is never seen
-		if you.model or final then you:SetAlpha(1) end
+	end
+	if me:IsShown() then
+		me.model = me:GetModel() or me.model
 	end
 	UI.ApplyScale()
-end
 
+	if me:IsShown() then
+		local camera = S.db.cameraMode == "auto" and 1 or (tonumber(S.db.cameraMode) or nil)
+		applyModel(me, angle * flip, LIGHT_ME, camera, { 0, 0, 0 })
+	end
+	if you:IsShown() then
+		you.cameraUsed = cameraFor(you.model)
+		local position = you.model and Storyline_C_POSITION and Storyline_C_POSITION[you.model]
+		applyModel(you, -angle * flip, LIGHT_YOU, you.cameraUsed, position or { 0, 0, 0 })
+		-- hidden until the model is known, so a wrong camera is never seen
+		if you.model or final then you:SetAlpha(1) end
+	end
+end
 UI.refreshModels = function() refreshModels(true) end
 
 -- Must be called once the window is shown (models are not set up on hidden frames).
 function UI.SetupModels(unit)
 	local me, you = UI.me, UI.you
-	local flip = S.db.flipFacing and -1 or 1
-	me.model, you.model, you.unit = nil, nil, nil
+	me.model, you.model, you.unit, you.cameraUsed = nil, nil, nil, nil
 	for _, m in ipairs({ me, you }) do
 		m:SetScript("OnUpdate", nil)
 		m.animToken = (m.animToken or 0) + 1
+		pcall(m.ClearModel, m)   -- forget the camera / rotation of the previous dialog
 	end
 
 	if not S.db.showModels then
@@ -322,7 +345,6 @@ function UI.SetupModels(unit)
 	end
 
 	me:Show()
-	prepareModel(me, (S.db.facingAngle or 0.75) * flip, LIGHT_ME, 1)
 	pcall(me.SetUnit, me, "player")
 	me.model = me:GetModel()
 
@@ -331,7 +353,6 @@ function UI.SetupModels(unit)
 		UI.tail:Show()
 		you.unit = unit
 		you:SetAlpha(0)
-		prepareModel(you, -(S.db.facingAngle or 0.75) * flip, LIGHT_YOU, 1)
 		pcall(you.SetUnit, you, unit)
 		you.model = you:GetModel()
 	else
@@ -343,9 +364,10 @@ function UI.SetupModels(unit)
 	refreshModels(false)
 	UI.setupToken = (UI.setupToken or 0) + 1
 	local token = UI.setupToken
-	for i, delay in ipairs({ 0.1, 0.25, 0.6 }) do
+	local delays = { 0.1, 0.25, 0.6, 1.2 }
+	for i, delay in ipairs(delays) do
 		S.After(delay, function()
-			if UI.setupToken == token and S.session then refreshModels(i == 3) end
+			if UI.setupToken == token and S.session then refreshModels(i >= 3) end
 		end)
 	end
 end
@@ -374,7 +396,22 @@ end
 
 function UI.UpdateDim()
 	if not UI.dim then return end
-	if S.db.dimWorld and UI.frame:IsShown() then UI.dim:Show() else UI.dim:Hide() end
+	local amount = max(0, min(1, S.db.dimAmount or 0.5))
+	UI.dimTex:SetTexture(0, 0, 0, amount)
+	if S.db.dimWorld and amount > 0 and UI.frame:IsShown() then UI.dim:Show() else UI.dim:Hide() end
+end
+
+-- Shows the dimming for a moment while the slider is dragged and no dialog is open.
+function UI.PreviewDim()
+	if not UI.dim then return end
+	local amount = max(0, min(1, S.db.dimAmount or 0.5))
+	UI.dimTex:SetTexture(0, 0, 0, amount)
+	if amount > 0 then UI.dim:Show() else UI.dim:Hide() end
+	UI.dimPreview = (UI.dimPreview or 0) + 1
+	local token = UI.dimPreview
+	S.After(1.5, function()
+		if UI.dimPreview == token then UI.UpdateDim() end
+	end)
 end
 
 function UI.ResizeChat()
@@ -592,12 +629,25 @@ function UI.Show()
 	UI.RefreshBindings()
 end
 
-function UI.Hide()
+-- instant = true: hide at once (used when the player closes the window, so it can never get stuck
+-- in the middle of a fade). Otherwise fade out, with a watchdog in case the fade never finishes.
+function UI.Hide(instant)
 	local f = UI.frame
 	if not f or not f:IsShown() then return end
 	pcall(ClearOverrideBindings, f)
 	PlaySound("igQuestLogClose")
+	if instant then
+		S.CancelFade(f)
+		f:Hide()
+		return
+	end
 	S.Fade(f, 0, 0.2, true)
+	S.After(0.7, function()
+		if not S.session and f:IsShown() then
+			S.CancelFade(f)
+			f:Hide()
+		end
+	end)
 end
 
 local function saveFrame()
@@ -683,8 +733,9 @@ function UI.Create()
 	UI.dim:SetAllPoints(UIParent)
 	UI.dim:SetFrameStrata("BACKGROUND")
 	local dimTex = UI.dim:CreateTexture(nil, "BACKGROUND")
+	UI.dimTex = dimTex
 	dimTex:SetAllPoints(UI.dim)
-	dimTex:SetTexture(0, 0, 0, 0.5)
+	dimTex:SetTexture(0, 0, 0, S.db.dimAmount or 0.5)
 	UI.dim:Hide()
 
 	---------------- background ----------------
@@ -703,7 +754,7 @@ function UI.Create()
 	models:SetFrameLevel(LEVEL.MODELS)
 	models:SetPoint("TOPLEFT", f, "TOPLEFT", 20, -20)
 	models:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -20, 20)
-	models:EnableMouseWheel(true)
+	models:EnableMouseWheel(S.db.scrollScale and true or false)
 	models:SetScript("OnMouseWheel", onModelsScroll)
 	UI.models = models
 
@@ -793,7 +844,7 @@ function UI.Create()
 	nextButton:SetAllPoints(chat)
 	nextButton:SetFrameLevel(LEVEL.CHAT + 4)
 	nextButton:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-	nextButton:SetScript("OnEnter", function() if UI.nextButton:IsEnabled() then glow:Show() end end)
+	nextButton:SetScript("OnEnter", function() if S.IsOn(UI.nextButton) then glow:Show() end end)
 	nextButton:SetScript("OnLeave", function() glow:Hide() end)
 	nextButton:SetScript("OnClick", function(_, button)
 		if button == "RightButton" then S.Rewind() else S.Advance() end
@@ -887,13 +938,19 @@ function UI.Create()
 	UI.choices.Title:Hide()
 
 	---------------- close / lock / config / resize ----------------
+	-- The control buttons live on a higher strata than the window itself, so nothing inside or
+	-- on top of the window (hover panels, other addons' frames) can swallow their clicks.
 	local close = CreateFrame("Button", "Storyline_NPCFrameClose", f, "UIPanelCloseButton")
+	close:SetFrameStrata("DIALOG")
 	close:SetFrameLevel(LEVEL.CONTROLS)
 	close:SetPoint("TOPRIGHT", f, "TOPRIGHT", -5, -10)
+	close:SetHitRectInsets(-6, -6, -6, -6)
+	close:RegisterForClicks("LeftButtonUp", "RightButtonUp")
 	close:SetScript("OnClick", function() S.Close() end)
 
 	local lock = CreateFrame("Button", "Storyline_NPCFrameLock", f)
 	UI.lock = lock
+	lock:SetFrameStrata("DIALOG")
 	lock:SetFrameLevel(LEVEL.CONTROLS)
 	lock:SetWidth(32); lock:SetHeight(32)
 	lock:SetPoint("TOPRIGHT", close, "TOPLEFT", 4, 0)
@@ -914,6 +971,7 @@ function UI.Create()
 	UI.UpdateLock()
 
 	local config = CreateFrame("Button", "Storyline_NPCFrameConfigButton", f)
+	config:SetFrameStrata("DIALOG")
 	config:SetFrameLevel(LEVEL.CONTROLS)
 	config:SetWidth(32); config:SetHeight(32)
 	config:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 5, 10)
@@ -928,6 +986,7 @@ function UI.Create()
 	UI.SetTooltip(config, L.SL_CONFIG, nil, "ANCHOR_TOP")
 
 	local grip = CreateFrame("Button", "Storyline_NPCFrameResizeButton", f)
+	grip:SetFrameStrata("DIALOG")
 	grip:SetFrameLevel(LEVEL.CONTROLS)
 	grip:SetWidth(16); grip:SetHeight(16)
 	grip:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -5, 10)

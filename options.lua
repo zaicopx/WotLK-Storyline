@@ -31,7 +31,13 @@ local CHECKS = {
 	{ key = "tintBackground", label = "SL_CONFIG_TINT", tip = "SL_CONFIG_TINT_TT",
 	  onChange = function() S.UI.RefreshBackground() end },
 	{ key = "dimWorld", label = "SL_CONFIG_DIM", tip = "SL_CONFIG_DIM_TT",
-	  onChange = function() S.UI.UpdateDim() end },
+	  onChange = function()
+		if S.db.dimWorld and (S.db.dimAmount or 0) <= 0 then S.db.dimAmount = 0.5; O.Refresh() end
+		S.UI.UpdateDim()
+		if S.db.dimWorld and not S.UI.frame:IsShown() then S.UI.PreviewDim() end
+	  end },
+	{ key = "scrollScale", label = "SL_CONFIG_WHEEL", tip = "SL_CONFIG_WHEEL_TT",
+	  onChange = function() S.UI.ApplyWheelMode() end },
 }
 
 local SLIDERS = {
@@ -43,6 +49,17 @@ local SLIDERS = {
 	{ key = "facingAngle", min = 0, max = 1.3, step = 0.05, low = "0", high = "75°",
 	  text = function(v) return string.format(L.SL_CONFIG_ANGLE, floor(v / 1.3 * 75 + 0.5)) end,
 	  onChange = function() S.UI.RefreshModelTransforms() end },
+	{ key = "dimAmount", min = 0, max = 1, step = 0.05, low = "0%", high = "100%",
+	  text = function(v) return string.format(L.SL_CONFIG_DIMAMOUNT, floor(v * 100 + 0.5)) end,
+	  onChange = function()
+		-- moving the slider means "I want the world dimmed": switch the option on
+		if not S.db.dimWorld and (S.db.dimAmount or 0) > 0 then
+			S.db.dimWorld = true
+			O.Refresh()
+		end
+		S.UI.UpdateDim()
+		if not S.UI.frame:IsShown() then S.UI.PreviewDim() end
+	  end },
 }
 
 local function Tooltip(frame, text)
@@ -80,7 +97,7 @@ function O.Create()
 	about:SetText(L.SL_CONFIG_ABOUT)
 
 	-- Sliders: two in the left column, one in the right column
-	local slots = { { 28, -100 }, { 28, -160 }, { 318, -100 } }
+	local slots = { { 28, -100 }, { 28, -160 }, { 318, -100 }, { 318, -160 } }
 	for i, def in ipairs(SLIDERS) do
 		local name = "StorylineOptionSlider_" .. def.key
 		local slider = CreateFrame("Slider", name, panel, "OptionsSliderTemplate")
@@ -173,25 +190,22 @@ SlashCmdList["STORYLINE"] = function(msg)
 		S.Print("camera: " .. tostring(you.cameraUsed) .. " (mode " .. tostring(S.db.cameraMode) .. ") | scale: "
 			.. tostring(S.UI.scale) .. (S.UI.scaleSaved and " (saved)" or " (guessed)") .. " | angle: " .. tostring(S.db.facingAngle))
 	elseif msg:find("^camera") then
-		-- /storyline camera 0|1|2  -> for the NPC model you are talking to
-		-- /storyline camera auto   -> forget the setting for this model
-		-- /storyline camera all <0|1|2|auto> -> same for every NPC
+		-- /storyline camera free|0|1|2|auto   -> for the NPC model you are talking to
+		-- /storyline camera all free|auto|0|1|2 -> for every NPC
+		-- ("free" = characters can turn, "auto" = old behaviour: character models use camera 1)
 		local arg, value = msg:match("^camera%s+(%S+)%s*(%S*)")
 		local path = currentModel()
 		if arg == "all" then
-			S.db.cameraMode = (value == "" or value == "auto") and "auto" or (tonumber(value) or "auto")
+			value = (value == "" and "free") or value
+			S.db.cameraMode = tonumber(value) or value
 			S.UI.RefreshModelTransforms()
 			S.Print("camera mode for all NPCs: " .. tostring(S.db.cameraMode))
-		elseif arg == "auto" and path then
-			S.cameras[path] = nil
+		elseif path and (arg == "free" or arg == "auto" or tonumber(arg)) then
+			if arg == "auto" then S.cameras[path] = nil else S.cameras[path] = tonumber(arg) or false end
 			S.UI.RefreshModelTransforms()
-			S.Print("camera for this model: auto")
-		elseif tonumber(arg) and path then
-			S.cameras[path] = tonumber(arg)
-			S.UI.RefreshModelTransforms()
-			S.Print("camera for this model = " .. arg)
+			S.Print("camera for this model: " .. tostring(arg))
 		else
-			S.Print("usage: /storyline camera 0|1|2|auto (this NPC model)  |  /storyline camera all 0|1|2|auto")
+			S.Print("usage: /storyline camera free|0|1|2|auto (this NPC model)  |  /storyline camera all free|auto|0|1|2")
 		end
 	elseif msg:find("^angle") then
 		local value = tonumber(msg:match("angle%s+(%S+)"))
@@ -218,6 +232,48 @@ SlashCmdList["STORYLINE"] = function(msg)
 		S.db.flipFacing = not S.db.flipFacing
 		S.UI.RefreshModelTransforms()
 		S.Print("flipFacing = " .. tostring(S.db.flipFacing))
+	elseif msg == "close" then
+		-- emergency exit: closes the window and the original dialog no matter what state they are in
+		S.ForceClose()
+		S.Print("closed")
+	elseif msg:find("^dim") then
+		-- /storyline dim <0-100>  (0 = off)
+		local value = tonumber(msg:match("dim%s+(%S+)"))
+		if value then
+			S.db.dimAmount = math.max(0, math.min(1, value / 100))
+			S.db.dimWorld = S.db.dimAmount > 0
+			S.UI.UpdateDim()
+			if not S.UI.frame:IsShown() then S.UI.PreviewDim() end
+			if O.Refresh then O.Refresh() end
+		end
+		S.Print("dim = " .. floor((S.db.dimWorld and S.db.dimAmount or 0) * 100 + 0.5) .. "%  (usage: /storyline dim 0-100)")
+	elseif msg == "wheel" then
+		S.db.scrollScale = not S.db.scrollScale
+		S.UI.ApplyWheelMode()
+		if O.Refresh then O.Refresh() end
+		S.Print(L.SL_CONFIG_WHEEL .. ": " .. tostring(S.db.scrollScale))
+	elseif msg == "debug" then
+		local s = S.session
+		S.Print("session: " .. (s and tostring(s.kind) or "none")
+			.. " | Storyline window shown: " .. tostring(S.UI.frame:IsShown()) .. " (alpha " .. string.format("%.2f", S.UI.frame:GetAlpha()) .. ")"
+			.. " | QuestFrame shown: " .. tostring(QuestFrame and QuestFrame:IsShown() or false)
+			.. " | GossipFrame shown: " .. tostring(GossipFrame and GossipFrame:IsShown() or false))
+		local ab = _G.QuestFrameAcceptButton
+		S.Print("Accept button: " .. (ab and ("visible=" .. tostring(ab:IsVisible() and true or false) .. " IsEnabled()=" .. tostring(ab:IsEnabled())) or "missing")
+			.. " (1 = enabled, 0 = disabled)")
+	elseif msg == "focus" then
+		-- /storyline focus, then hold the mouse over the button that does not react: after 4 seconds
+		-- the name of the frame under the mouse is printed (tells which frame is in the way).
+		S.Print("hold the mouse over the button that does not react... (4 seconds)")
+		S.After(4, function()
+			local f = GetMouseFocus and GetMouseFocus()
+			local names = {}
+			while f and #names < 6 do
+				names[#names + 1] = f:GetName() or ("<" .. tostring(f:GetObjectType()) .. ">")
+				f = f:GetParent()
+			end
+			S.Print("under the mouse: " .. (#names > 0 and table.concat(names, "  <  ") or "nothing"))
+		end)
 	elseif msg == "reset" then
 		S.ResetFrameDB()
 		S.UI.ApplyFrameDB()

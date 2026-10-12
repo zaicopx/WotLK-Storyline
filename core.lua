@@ -5,7 +5,7 @@
 local S = _G.Storyline or {}
 _G.Storyline = S
 
-S.VERSION = "3.1.0"
+S.VERSION = "3.3.1"
 
 local tinsert, tremove = table.insert, table.remove
 local GetTime = GetTime
@@ -23,10 +23,13 @@ local DEFAULTS = {
 	lockFrame = false,
 	disableInInstances = false,
 	showModels = true,
-	cameraMode = "auto",       -- NPC camera: "auto" (character models 1, creatures 0) or 0 / 1 / 2
+	cameraMode = "free",       -- "free": characters use the free camera (they can turn), creatures camera 0;
+	                           -- "auto": character models camera 1 (no turning); or a fixed camera 0 / 1 / 2
 	facingAngle = 0.75,        -- how far the models turn towards each other (radians)
 	textSize = 16,
 	dimWorld = false,
+	dimAmount = 0.5,           -- how dark the world gets behind the window (0 = not at all, 1 = black)
+	scrollScale = false,       -- mouse wheel over the models resizes the NPC (off: it was easy to trigger by accident)
 	modelAnimations = true,
 	keyShortcuts = true,
 	flipFacing = false,
@@ -49,7 +52,19 @@ function S.InitDB()
 	d.debug.scaling = type(d.debug.scaling) == "table" and d.debug.scaling or {}
 	d.debug.timing = type(d.debug.timing) == "table" and d.debug.timing or {}
 	d.debug.cameras = type(d.debug.cameras) == "table" and d.debug.cameras or {}
+	-- 3.2: characters now use the free camera so that they can turn towards each other
+	if (d.config.layoutVersion or 0) < 2 then
+		d.config.cameraMode = nil
+		d.config.layoutVersion = 2
+	end
+	-- 3.3: the mouse wheel no longer resizes the models unless the player turns it on
+	if (d.config.layoutVersion or 0) < 3 then
+		d.config.scrollScale = false
+		d.config.layoutVersion = 3
+	end
 	mergeDefaults(d.config, DEFAULTS)
+	local dim = tonumber(d.config.dimAmount) or DEFAULTS.dimAmount
+	d.config.dimAmount = math.max(0, math.min(1, dim))
 	S.data = d
 	S.db = d.config
 	S.scaling = d.debug.scaling

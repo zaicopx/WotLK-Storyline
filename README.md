@@ -1,4 +1,4 @@
-# Storyline (WotLK 3.3.5a) – 3.1.0
+# Storyline (WotLK 3.3.5a) – 3.3.1
 
 Retail-style quest and gossip dialogs for the 3.3.5a client, modelled on the current
 **Total-RP/Storyline** and built on the artwork and model data of the original 3.3.5a
@@ -24,10 +24,12 @@ existing settings carry over. Type `/storyline test` for a preview without an NP
 
 ## Slash commands
 `/storyline` options · `/storyline test` preview · `/storyline flip` swap model facing ·
-`/storyline reset` reset window · `/storyline info` print model info · `/storyline scale <n>|reset` · `/storyline camera 0|1|2|auto` · `/storyline angle <0..1.3>` · `/storyline lock|unlock` · `/storyline models` turn 3D models on/off (safety switch)
+`/storyline reset` reset window · `/storyline info` print model info · `/storyline scale <n>|reset` · `/storyline camera free|0|1|2|auto` (add `all` for every NPC) · `/storyline angle <0..1.3>` · `/storyline lock|unlock` · `/storyline models` turn 3D models on/off (safety switch) ·
+`/storyline dim <0-100>` strength of the world dimming · `/storyline wheel` mouse-wheel model resizing on/off ·
+`/storyline close` emergency close · `/storyline debug` · `/storyline focus` (which frame is under the mouse)
 
 Tips: drag the window to move it, drag the bottom-right grip to resize, **mouse wheel over
-the models** makes the NPC bigger / smaller relative to your character (saved per pair of models; use it for giants that show up too big), right click
+the models** can make the NPC bigger / smaller relative to your character (off by default, turn it on in the options or with `/storyline wheel`; saved per pair of models, `/storyline scale reset` undoes it), right click
 on the bubble rewinds, **1-9** pick a dialog choice, **SPACE** continues.
 
 ## Issues fixed
