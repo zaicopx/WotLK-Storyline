@@ -1,200 +1,102 @@
-----------------------------------------------------------------------------------
---  Storyline
---	---------------------------------------------------------------------------
---	Copyright 2015 Sylvain Cossement (telkostrasz@totalrp3.info)
---
---	Licensed under the Apache License, Version 2.0 (the "License");
---	you may not use this file except in compliance with the License.
---	You may obtain a copy of the License at
---
---		http://www.apache.org/licenses/LICENSE-2.0
---
---	Unless required by applicable law or agreed to in writing, software
---	distributed under the License is distributed on an "AS IS" BASIS,
---	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
---	See the License for the specific language governing permissions and
---	limitations under the License.
-----------------------------------------------------------------------------------
+-- utils.lua
+-- Text helpers (cleaning, paragraph splitting) and a few small formatting helpers.
 
---------------------
--- CHANGES:Lanrutcon:Implementing C_Timer.After function
---------------------
+local S = _G.Storyline
 
-C_Timer = {};
+local floor, max = math.floor, math.max
 
-local waitTable = {};
-local waitFrame = nil;
-
-C_Timer.After = function (delay, func, ...)
-  if(type(delay)~="number" or type(func)~="function") then
-    return false;
-  end
-  if(waitFrame == nil) then
-    waitFrame = CreateFrame("Frame","WaitFrame", UIParent);
-    waitFrame:SetScript("onUpdate",function (self,elapse)
-      local count = #waitTable;
-      local i = 1;
-      while(i<=count) do
-        local waitRecord = tremove(waitTable,i);
-        local d = tremove(waitRecord,1);
-        local f = tremove(waitRecord,1);
-        local p = tremove(waitRecord,1);
-        if(d>elapse) then
-          tinsert(waitTable,i,{d-elapse,f,p});
-          i = i + 1;
-        else
-          count = count - 1;
-          f(unpack(p));
-        end
-      end
-    end);
-  end
-  tinsert(waitTable,{delay,func,{...}});
-  return true;
-end
-
-
-
--- Storyline API
-local getId = Storyline_API.lib.generateID;
-
--- WOW API
-local after, tostring = C_Timer.After, tostring;
-
---*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
--- UTILS
---*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
-
-local function getQuestIcon(isDaily, isRepeatable)
-    --CHANGE:centurijon:isLegendary not available in 3.4
-    --CHANGE:centurijon:frequency -> isDaily
-	if (isDaily) then
-		return "Interface\\GossipFrame\\DailyQuestIcon";
-	elseif (isRepeatable) then
-		return "Interface\\GossipFrame\\DailyActiveQuestIcon";
-	else
-		return "Interface\\GossipFrame\\AvailableQuestIcon";
-	end
-end
-Storyline_API.getQuestIcon = getQuestIcon;
-
-local function getQuestActiveIcon(isComplete)
-	if (isComplete) then
-		return "Interface\\GossipFrame\\ActiveQuestIcon";
-	else
-		return "Interface\\GossipFrame\\IncompleteQuestIcon";
-	end
-end
-Storyline_API.getQuestActiveIcon = getQuestActiveIcon;
-
-local function getQuestTriviality(isTrivial)
-	if isTrivial then
-		return " (|TInterface\\TARGETINGFRAME\\UI-TargetingFrame-Seal:20:20|t)";
-	else
-		return "";
-	end
-end
-Storyline_API.getQuestTriviality = getQuestTriviality;
-
-local function getQuestLevelColor(questLevel)
-	return 0.9, 0.6, 0;
-end
-Storyline_API.getQuestLevelColor = getQuestLevelColor;
-
---*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
--- SOME ANIMATION
---*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
-
-local Storyline_ANIM_MAPPING, Storyline_DEFAULT_ANIM_MAPPING = Storyline_ANIM_MAPPING, Storyline_DEFAULT_ANIM_MAPPING;
-local Storyline_ANIMATION_SEQUENCE_DURATION = Storyline_ANIMATION_SEQUENCE_DURATION;
-local Storyline_ANIMATION_SEQUENCE_DURATION_BY_MODEL = Storyline_ANIMATION_SEQUENCE_DURATION_BY_MODEL;
-local Storyline_NPCFrameModelsMe, Storyline_NPCFrameModelsYou = Storyline_NPCFrameModelsMe, Storyline_NPCFrameModelsYou;
-
-function Storyline_API.getAnimationByModel(model, animationType)
-	if model then
-		if Storyline_ANIM_MAPPING[model] and Storyline_ANIM_MAPPING[model][animationType] then
-			return Storyline_ANIM_MAPPING[model][animationType];
-		end
-	end
-	return Storyline_DEFAULT_ANIM_MAPPING[animationType];
-end
-
---CHANGES:Lanrutcon:SetAnimation was introduced in 5.0.4, implemented a similar function
---CHANGE:Shadovv: changed how playAnim works
-local function playAnim(model, sequence, duration)
-	
-	model.timer = 0;
-	model.animationDuration = duration;
-	
-	--blood elf females have multiple "talk" emotes and it causes flickering, changing to emote 64/65
-	if((model:GetModel() == "character\\bloodelf\\female\\bloodelffemale.m2" or model:GetModel() == "creature\\ladysylvanaswindrunner\\ladysylvanaswindrunner.m2" or model:GetModel() == "creature\\alexstrasza\\ladyalexstrasa.m2") and sequence == 60) then
-		sequence = math.random(64,65);
-		model.animationDuration = Storyline_ANIMATION_SEQUENCE_DURATION_BY_MODEL[model:GetModel()][tostring(sequence)];
-	end;
-	
-	model:SetScript("OnUpdate", function(self, elapsed)
-		
-		self.timer = (self.timer + elapsed);
-		
-		if(self.timer > self.animationDuration or sequence == 0 or sequence == 3) then
-			self:SetScript("OnUpdate", nil);
-		else
-			self:SetSequenceTime(sequence, self.timer*1000);
-		end;
-		
-	end)
-	if model.debug then
-		model.debug:SetText(sequence);
-	end
-end
-
-function Storyline_API.playAnimationDelay(model, sequence, duration, delay, token)
-	if delay == 0 then
-		playAnim(model, sequence, duration)
-	else
-		model.token = token;
-		after(delay, function()
-			if model.token == token then
-				playAnim(model, sequence, duration);
-			end
+------------------------------------------------------------------------
+-- Text cleaning
+------------------------------------------------------------------------
+-- The 3.3.5a client normally expands $n / $b / <name> itself. A few servers
+-- send them raw, so replace what is left over.
+function S.CleanText(text)
+	if not text then return "" end
+	text = tostring(text)
+	text = text:gsub("\r", "")
+	if text:find("$", 1, true) then
+		local name = UnitName("player") or ""
+		local class = UnitClass("player") or ""
+		local race = UnitRace("player") or ""
+		local sex = UnitSex("player")
+		text = text:gsub("%$[Bb]", "\n")
+		text = text:gsub("%$[Nn]", function() return name end)
+		text = text:gsub("%$[Rr]", function() return race end)
+		text = text:gsub("%$[Cc]", function() return class end)
+		text = text:gsub("%$[Gg]%s*([^:;]*):([^;]*);", function(male, female)
+			if sex == 3 then return female end
+			return male
 		end)
 	end
-
-	return delay + duration;
+	return strtrim(text)
 end
 
-local DEFAULT_SEQUENCE_TIME = 4;
-
-
-local function getDuration(model, sequence)
-	--print(model);
-	--SendChatMessage(model, "SAY", nil, nil);
-	sequence = tostring(sequence);
-	if Storyline_Data.debug.timing[model] and Storyline_Data.debug.timing[model][sequence] then
-		return Storyline_Data.debug.timing[model][sequence];
-	elseif Storyline_ANIMATION_SEQUENCE_DURATION_BY_MODEL[model] and Storyline_ANIMATION_SEQUENCE_DURATION_BY_MODEL[model][sequence] then
-		return Storyline_ANIMATION_SEQUENCE_DURATION_BY_MODEL[model][sequence];
+-- One entry per non-empty line (the client sends one paragraph per line).
+function S.SplitParagraphs(text)
+	text = S.CleanText(text)
+	local texts = {}
+	for line in (text .. "\n"):gmatch("([^\n]*)\n") do
+		line = strtrim(line)
+		if line ~= "" then texts[#texts + 1] = line end
 	end
-	return Storyline_ANIMATION_SEQUENCE_DURATION[sequence] or DEFAULT_SEQUENCE_TIME;
-end
-Storyline_API.getDuration = getDuration;
-
-local function playAndStand(model, sequence, duration)
-	local token = getId();
-	model.token = token
-	playAnim(model, sequence, duration);
-	after(duration, function()
-		if model.token == token then
-			playAnim(model, 0, duration);
-		end
-	end);
+	return texts
 end
 
-function Storyline_API.playSelfAnim(sequence)
-	playAndStand(Storyline_NPCFrameModelsMe, sequence, getDuration(Storyline_NPCFrameModelsMe:GetModel(), sequence));
+------------------------------------------------------------------------
+-- Misc helpers
+------------------------------------------------------------------------
+function S.Pack(...)
+	return { n = select("#", ...), ... }
 end
 
-local function playTargetAnim(sequence)
-	playAndStand(Storyline_NPCFrameModelsYou, sequence, getDuration(Storyline_NPCFrameModelsYou:GetModel(), sequence));
+function S.FormatNumber(n)
+	local s = tostring(floor((n or 0) + 0.5))
+	local k
+	repeat
+		s, k = s:gsub("^(-?%d+)(%d%d%d)", "%1,%2")
+	until k == 0
+	return s
 end
-Storyline_NPCFrameDebugSequenceYou.playTargetAnim = playTargetAnim;
+
+function S.MoneyString(copper)
+	if not copper or copper <= 0 then return nil end
+	if GetCoinTextureString then return GetCoinTextureString(copper, 14) end
+	if GetCoinText then return GetCoinText(copper, " ") end
+	return tostring(copper)
+end
+
+function S.LevelColorHex(level)
+	local color
+	if GetQuestDifficultyColor then
+		color = GetQuestDifficultyColor(level)
+	elseif GetDifficultyColor then
+		color = GetDifficultyColor(level)
+	end
+	if type(color) == "table" then
+		return string.format("%02x%02x%02x",
+			floor((color.r or 1) * 255 + 0.5),
+			floor((color.g or 1) * 255 + 0.5),
+			floor((color.b or 1) * 255 + 0.5))
+	end
+	return "ffd200"
+end
+
+-- The unit token of whoever we are talking to.
+function S.GetNPCUnit()
+	if UnitExists("npc") then return "npc" end
+	if UnitExists("target") and not UnitIsPlayer("target") then return "target" end
+	return nil
+end
+
+function S.GetNPCName()
+	local unit = S.GetNPCUnit()
+	return unit and UnitName(unit) or nil
+end
+
+-- Calls a global API function by name, at call time. Looking the function up
+-- late (instead of caching it in a local when the file loads) matters: other
+-- addons such as Questie hook these globals with hooksecurefunc.
+function S.API(name, ...)
+	local fn = _G[name]
+	if type(fn) == "function" then return fn(...) end
+end

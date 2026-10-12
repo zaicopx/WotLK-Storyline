@@ -1,10 +1,22 @@
 ## Interface: 30300
 ## Title: Storyline
-## Author: Telkostrasz
-## Version: 1.1
-## Notes: Enhanced quest storytelling
-## URL: http://storyline.totalrp3.info/
-## DefaultState: Enabled
-## LoadOnDemand: 0
+## Title-deDE: Storyline
+## Notes: Immersive, Retail-style quest and gossip dialogs with 3D models (WotLK 3.3.5a rework of Total RP's Storyline).
+## Notes-deDE: Immersive Quest- und Gespraechsfenster im Retail-Stil mit 3D-Modellen (WotLK 3.3.5a).
+## Author: shadovvs (WotLK backport), Lanrutcon, Ellypse & Telkostrasz (original Storyline, Apache 2.0)
+## Version: 3.1.0
 ## SavedVariables: Storyline_Data
-ui.xml
+## OptionalDeps: Questie
+## X-Website: https://github.com/shadovvs/WotLK-Storyline
+
+locales.lua
+core.lua
+structures.lua
+utils.lua
+frames.xml
+layout.lua
+rewards.lua
+logic.lua
+compat.lua
+options.lua
+events.lua

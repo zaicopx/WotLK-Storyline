@@ -1,190 +1,174 @@
-----------------------------------------------------------------------------------
---  Storyline
---	---------------------------------------------------------------------------
---	Copyright 2015 Sylvain Cossement (telkostrasz@totalrp3.info)
---
---	Licensed under the Apache License, Version 2.0 (the "License");
---	you may not use this file except in compliance with the License.
---	You may obtain a copy of the License at
---
---		http://www.apache.org/licenses/LICENSE-2.0
---
---	Unless required by applicable law or agreed to in writing, software
---	distributed under the License is distributed on an "AS IS" BASIS,
---	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
---	See the License for the specific language governing permissions and
---	limitations under the License.
-----------------------------------------------------------------------------------
+-- locales.lua
+-- All user-facing strings. enUS is the fallback for every other locale.
+-- Adding a language: copy the enUS block, change the key ["enUS"] to the client
+-- locale code (frFR, esES, ruRU, ...) and translate the values. Missing keys
+-- automatically fall back to English.
 
-Storyline_API = {
-	lib = {},
-};
+local S = _G.Storyline or {}
+_G.Storyline = S
 
-Storyline_API.locale = {
+S.locales = {}
 
-	--*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
-	-- LOCALE_EN
-	--*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
-	
-	["enUS"] = {
-		localeContent = {
-			SL_STORYLINE = "Storyline",
-			SL_SELECT_DIALOG_OPTION = "Select dialog option",
-			SL_SELECT_AVAILABLE_QUEST = "Select available quest",
-			SL_WELL = "Well ...",
-			SL_ACCEPTANCE = "I accept.",
-			SL_DECLINE = "I refuse.",
-			SL_NEXT = "Continue",
-			SL_CONTINUE = "Complete quest",
-			SL_NOT_YET = "Come back when it's done",
-			SL_CHECK_OBJ = "Check objectives",
-			SL_RESET = "Rewind",
-			SL_RESET_TT = "Rewind this dialogue.",
-			SL_REWARD_MORE = "You will also get",
-			SL_REWARD_MORE_SUB = "\nMoney: |cffffffff%s|r\nExperience: |cffffffff%s xp|r\n\n|cffffff00Click:|r Get your reward!",
-			SL_GET_REWARD = "Get your reward",
-			SL_SELECT_REWARD = "Select your reward",
-			SL_CONFIG = "Parameters",
-			SL_CONFIG_TEXTSPEED = "Text anim speed: %.1fx",
-			SL_CONFIG_TEXTSPEED_INSTANT = "No anim",
-			SL_CONFIG_TEXTSPEED_HIGH = "High",
-			SL_CONFIG_AUTOEQUIP = "Auto equip reward (experimental)",
-			SL_CONFIG_AUTOEQUIP_TT = "Auto equip rewards if it has a better item lvl.",
-			SL_CONFIG_FORCEGOSSIP = "Show flavor texts",
-			SL_CONFIG_FORCEGOSSIP_TT = "Show flavor texts on NPCs like merchants or fly masters.",
-			SL_CONFIG_HIDEORIGINALFRAMES = "Hide original frames",
-			SL_CONFIG_HIDEORIGINALFRAMES_TT = "Hide the original quest frame and NPC dialogs frame.",
-			SL_CONFIG_LOCKFRAME = "Lock frame",
-			SL_CONFIG_LOCKFRAME_TT = "Lock Storyline frame so it cannot be move by mistake.",
-			SL_RESIZE = "Resize",
-			SL_RESIZE_TT = "Drag and drop to resize",
-		}
-	},
-	
-	--*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
-	-- LOCALE_FR
-	--*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
-	
-	["frFR"] = {
-		localeContent = {
-			SL_STORYLINE = "Storyline",
-			SL_SELECT_DIALOG_OPTION = "Sélectionnez une option",
-			SL_SELECT_AVAILABLE_QUEST = "Sélectionnez une quête",
-			SL_WELL = "Et bien ...",
-			SL_ACCEPTANCE = "J'accepte.",
-			SL_DECLINE = "Je refuse.",
-			SL_NEXT = "Continuer",
-			SL_CONTINUE = "Terminer la quête",
-			SL_NOT_YET = "Revenez quand cela sera fait",
-			SL_CHECK_OBJ = "Vérifier objectifs",
-			SL_RESET = "Début",
-			SL_RESET_TT = "Revenir au début du dialogue",
-			SL_REWARD_MORE = "Vous recevrez aussi",
-			SL_REWARD_MORE_SUB = "\nArgent: |cffffffff%s|r\nExpérience: |cffffffff%s xp|r\n\n|cffffff00Clic:|r Prenez votre récompense !",
-			SL_GET_REWARD = "Prenez votre récompense",
-			SL_SELECT_REWARD = "Choisissez votre récompense",
-			SL_CONFIG = "Configuration",
-			SL_CONFIG_TEXTSPEED = "Vitesse de défilement du texte: %.1fx",
-			SL_CONFIG_TEXTSPEED_INSTANT = "Pas de défilement",
-			SL_CONFIG_TEXTSPEED_HIGH = "Rapide",
-			SL_CONFIG_AUTOEQUIP = "Équipement automatique (expérimental)",
-			SL_CONFIG_AUTOEQUIP_TT = "Équipe automatiquement les récompense si elles ont un meilleur niveau d'équipement.",
-			SL_CONFIG_FORCEGOSSIP = "Afficher les textes d'introduction des PNJs",
-			SL_CONFIG_FORCEGOSSIP_TT = "Forcer l'affichage des textes d'introduction normalement masqués des PNJs, comme les marchands ou les maîtres de vol.",
-			SL_CONFIG_HIDEORIGINALFRAMES = "Cacher les fenêtres originales",
-			SL_CONFIG_HIDEORIGINALFRAMES_TT = "Cacher les fenêtres originales de quêtes et dialogues de PNJs.",
-			SL_RESIZE = "Redimensionner",
-			SL_RESIZE_TT = "Cliquer-glisser pour redimensionner",
-		}
-	},
+--*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
+-- enUS (default / fallback)
+--*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
+S.locales["enUS"] = {
+	SL_STORYLINE = "Storyline",
+	SL_SELECT_DIALOG_OPTION = "Select a dialog option",
+	SL_SELECT_AVAILABLE_QUEST = "Select an available quest",
+	SL_WELL = "Well...",
+	SL_ACCEPTANCE = "I accept.",
+	SL_DECLINE = "I decline.",
+	SL_NEXT = "Next",
+	SL_CONTINUE = "Complete quest",
+	SL_NOT_YET = "Come back when it's done",
+	SL_CHECK_OBJ = "Check objectives",
+	SL_RESET = "Rewind",
+	SL_RESET_TT = "Rewind this dialog.",
+	SL_REWARD_MORE = "You will also receive",
+	SL_REWARD_MORE_SUB = "\nGold: |cffffffff%s|r\nExperience: |cffffffff%s xp|r\n\n|cffffff00Click:|r Get your reward!",
+	SL_GET_REWARD = "Get reward",
+	SL_SELECT_REWARD = "Select your reward",
+	SL_CONFIG = "Parameters",
+	SL_CONFIG_TEXTSPEED = "Text animation speed: %.1fx",
+	SL_CONFIG_TEXTSPEED_INSTANT = "No animation",
+	SL_CONFIG_TEXTSPEED_HIGH = "High",
+	SL_CONFIG_AUTOEQUIP = "Auto-equip reward (experimental)",
+	SL_CONFIG_AUTOEQUIP_TT = "Automatically equip the chosen reward when it has a higher item level than what you are wearing.",
+	SL_CONFIG_FORCEGOSSIP = "Show gossip text",
+	SL_CONFIG_FORCEGOSSIP_TT = "Show the gossip text of NPCs such as vendors or flight masters.",
+	SL_CONFIG_HIDEORIGINALFRAMES = "Hide original frames",
+	SL_CONFIG_HIDEORIGINALFRAMES_TT = "Hide the original quest frame and the original NPC dialog frame.",
+	SL_CONFIG_LOCKFRAME = "Lock frame",
+	SL_CONFIG_LOCKFRAME_TT = "Locks the Storyline window so it cannot be moved by accident.",
+	SL_RESIZE = "Resize",
+	SL_RESIZE_TT = "Drag and drop to resize",
+
+	-- New in 2.0
+	SL_OBJECTIVES = "Objectives",
+	SL_REWARDS = "Rewards",
+	SL_REQUIRED_ITEMS = "Required items",
+	SL_REQUIRED_MONEY = "Required gold",
+	SL_XP = "Experience",
+	SL_CLOSE = "Close",
+	SL_CONTINUE_HINT = "Click or press SPACE to continue",
+	SL_PAGE = "%d / %d",
+	SL_SPELL_LEARN = "You will learn",
+	SL_TALENTS = "Talent points",
+	SL_TITLE = "Title",
+	SL_HONOR = "Honor",
+	SL_ARENA = "Arena points",
+	SL_BEST_PRICE = "Highest vendor price",
+	SL_DAILY = "Daily",
+	SL_CONFIG_KEYS = "Keyboard shortcuts",
+	SL_CONFIG_KEYS_TT = "SPACE continues the dialog and the keys 1-9 pick a dialog option.",
+	SL_CONFIG_TEXTSIZE = "Text size: %d",
+	SL_CONFIG_ANGLE = "Model angle: %d°",
+	SL_CONFIG_DIM = "Dim the world behind the window",
+	SL_CONFIG_DIM_TT = "Darkens the 3D world (not your interface) while a dialog is open.",
+	SL_CONFIG_MODELS = "Show 3D models",
+	SL_CONFIG_MODELS_TT = "Turn this off if the game ever crashes while a dialog opens (/storyline models).",
+	SL_CONFIG_ANIM = "Animate 3D models",
+	SL_CONFIG_ANIM_TT = "Plays a talking animation on the NPC model while the text is being displayed.",
+	SL_CONFIG_FLIP = "Flip model direction",
+	SL_CONFIG_FLIP_TT = "Enable this if the two models face away from each other.",
+	SL_CONFIG_RESETFRAME = "Reset window position and size",
+	SL_CONFIG_PREVIEW = "Preview",
+	SL_CONFIG_DISABLEINSTANCES = "Disable in instances",
+	SL_CONFIG_DISABLEINSTANCES_TT = "Keep the original dialog windows inside dungeons and raids.",
+	SL_CONFIG_TINT = "Faction-colored background",
+	SL_CONFIG_TINT_TT = "Tints the parchment background blue (Alliance) or red (Horde).",
+	SL_CONFIG_ABOUT = "Storyline for WotLK 3.3.5a, modelled on the Retail version. Type /storyline test to preview the window.",
+	SL_MODEL_HINT = "Mouse wheel: make the NPC bigger or smaller",
+	SL_DEMO_NAME = "Storyline",
+	SL_DEMO_TEXT = "Greetings, traveler. This is a preview of the Storyline window.\nText appears one letter at a time, long dialogs are cut into several parts, and your choices show up here once the NPC has finished talking.",
+	SL_DEMO_CHOICE1 = "This looks great!",
+	SL_DEMO_CHOICE2 = "Close the preview.",
 }
 
-local error, tostring = error, tostring;
+--*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
+-- deDE (issue #5)
+--*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
+S.locales["deDE"] = {
+	SL_STORYLINE = "Storyline",
+	SL_SELECT_DIALOG_OPTION = "Dialogoption auswählen",
+	SL_SELECT_AVAILABLE_QUEST = "Verfügbare Quest auswählen",
+	SL_WELL = "Nun ...",
+	SL_ACCEPTANCE = "Ich nehme an.",
+	SL_DECLINE = "Ich lehne ab.",
+	SL_NEXT = "Weiter",
+	SL_CONTINUE = "Quest abgeben",
+	SL_NOT_YET = "Komm zurück, wenn es erledigt ist",
+	SL_CHECK_OBJ = "Ziele prüfen",
+	SL_RESET = "Zurückspulen",
+	SL_RESET_TT = "Diesen Dialog zurückspulen.",
+	SL_REWARD_MORE = "Ihr erhaltet außerdem",
+	SL_REWARD_MORE_SUB = "\nGold: |cffffffff%s|r\nErfahrung: |cffffffff%s xp|r\n\n|cffffff00Klick:|r Belohnung erhalten!",
+	SL_GET_REWARD = "Belohnung erhalten",
+	SL_SELECT_REWARD = "Belohnung auswählen",
+	SL_CONFIG = "Parameter",
+	SL_CONFIG_TEXTSPEED = "Geschwindigkeit der Textanimation: %.1fx",
+	SL_CONFIG_TEXTSPEED_INSTANT = "Keine Animation",
+	SL_CONFIG_TEXTSPEED_HIGH = "Hoch",
+	SL_CONFIG_AUTOEQUIP = "Belohnung automatisch anlegen (experimentell)",
+	SL_CONFIG_AUTOEQUIP_TT = "Belohnung automatisch anlegen, wenn sie eine bessere Gegenstandsstufe hat.",
+	SL_CONFIG_FORCEGOSSIP = "Zeige Anekdotentext",
+	SL_CONFIG_FORCEGOSSIP_TT = "Zeige Anekdotentext von NPCs wie Händler oder Flugmeister.",
+	SL_CONFIG_HIDEORIGINALFRAMES = "Originalrahmen ausblenden",
+	SL_CONFIG_HIDEORIGINALFRAMES_TT = "Ausblenden des ursprünglichen Questrahmens und des Rahmens für NPC-Dialoge.",
+	SL_CONFIG_LOCKFRAME = "Fenster sperren",
+	SL_CONFIG_LOCKFRAME_TT = "Sperrt das Storyline-Fenster, damit es nicht versehentlich verschoben werden kann.",
+	SL_RESIZE = "Größe ändern",
+	SL_RESIZE_TT = "Ziehen und Ablegen zum Ändern der Größe",
 
-local LOCALS = Storyline_API.locale;
-local DEFAULT_LOCALE = GetLocale() == "frFR" and "frFR" or "enUS";
-Storyline_API.locale.DEFAULT_LOCALE = DEFAULT_LOCALE;
-local effectiveLocal = {};
-local localeFont;
-local current;
+	-- New in 2.0
+	SL_OBJECTIVES = "Ziele",
+	SL_REWARDS = "Belohnungen",
+	SL_REQUIRED_ITEMS = "Benötigte Gegenstände",
+	SL_REQUIRED_MONEY = "Benötigtes Gold",
+	SL_XP = "Erfahrung",
+	SL_CLOSE = "Schließen",
+	SL_CONTINUE_HINT = "Klicken oder LEERTASTE zum Fortfahren",
+	SL_SPELL_LEARN = "Ihr erlernt",
+	SL_TALENTS = "Talentpunkte",
+	SL_TITLE = "Titel",
+	SL_HONOR = "Ehre",
+	SL_ARENA = "Arenapunkte",
+	SL_BEST_PRICE = "Höchster Händlerpreis",
+	SL_DAILY = "Täglich",
+	SL_CONFIG_KEYS = "Tastaturkürzel",
+	SL_CONFIG_KEYS_TT = "Die LEERTASTE setzt den Dialog fort, die Tasten 1-9 wählen eine Dialogoption.",
+	SL_CONFIG_TEXTSIZE = "Textgröße: %d",
+	SL_CONFIG_ANGLE = "Modellwinkel: %d°",
+	SL_CONFIG_DIM = "Spielwelt hinter dem Fenster abdunkeln",
+	SL_CONFIG_DIM_TT = "Dunkelt die 3D-Welt (nicht dein Interface) ab, solange ein Dialog offen ist.",
+	SL_CONFIG_MODELS = "3D-Modelle anzeigen",
+	SL_CONFIG_MODELS_TT = "Deaktivieren, falls das Spiel beim Öffnen eines Dialogs abstürzt (/storyline models).",
+	SL_CONFIG_ANIM = "3D-Modelle animieren",
+	SL_CONFIG_ANIM_TT = "Spielt eine Sprechanimation beim NPC-Modell ab, solange der Text angezeigt wird.",
+	SL_CONFIG_FLIP = "Modellrichtung umkehren",
+	SL_CONFIG_FLIP_TT = "Aktivieren, falls sich die beiden Modelle voneinander abwenden.",
+	SL_CONFIG_RESETFRAME = "Fensterposition und -größe zurücksetzen",
+	SL_CONFIG_PREVIEW = "Vorschau",
+	SL_CONFIG_DISABLEINSTANCES = "In Instanzen deaktivieren",
+	SL_CONFIG_DISABLEINSTANCES_TT = "Die originalen Dialogfenster in Dungeons und Schlachtzügen beibehalten.",
+	SL_CONFIG_TINT = "Hintergrund in Fraktionsfarbe",
+	SL_CONFIG_TINT_TT = "Färbt den Pergamenthintergrund blau (Allianz) oder rot (Horde).",
+	SL_CONFIG_ABOUT = "Überarbeitetes Storyline für WotLK 3.3.5a. Mit /storyline test siehst du eine Vorschau des Fensters.",
+	SL_MODEL_HINT = "Mausrad: NPC größer oder kleiner machen",
+	SL_DEMO_TEXT = "Seid gegrüßt, Reisender. Dies ist eine Vorschau des Storyline-Fensters.\nDer Text erscheint Buchstabe für Buchstabe, lange Dialoge werden in mehrere Teile geteilt, und eure Antworten erscheinen hier, sobald der NPC fertig gesprochen hat.",
+	SL_DEMO_CHOICE1 = "Das sieht großartig aus!",
+	SL_DEMO_CHOICE2 = "Vorschau schließen.",
+}
 
--- Initialize a locale for the addon.
-function Storyline_API.locale.init()
-	-- Register config
-	current = Storyline_Data.config.locale or DEFAULT_LOCALE;
-	if not LOCALS[current] then
-		current = DEFAULT_LOCALE;
-	end
-	-- Pick the right font
-	if current == "zhCN" then
-		localeFont = "Fonts\\ZYKai_T.TTF";
-	elseif current == "ruRU" then
-		localeFont = "Fonts\\FRIZQT___CYR.TTF";
-	else
-		localeFont = "Fonts\\FRIZQT__.TTF";
-	end
-	effectiveLocal = LOCALS[current].localeContent;
+-- S.L resolves a key in the client locale first, then in enUS, then returns the key itself.
+local clientLocale = GetLocale()
+local current = S.locales[clientLocale]
+local fallback = S.locales["enUS"]
 
-	Storyline_API.locale.localeFont = localeFont;
-end
-
---	Return the localized text link to this key.
---	If the key isn't present in the current Locals table, then return the default localization.
---	If the key is totally unknown from TRP3, then an error will be lifted.
-local function getText(key)
-	if effectiveLocal[key] or LOCALS[DEFAULT_LOCALE].localeContent[key] then
-		return effectiveLocal[key] or LOCALS[DEFAULT_LOCALE].localeContent[key];
-	end
-	error("Unknown localization key: ".. tostring(key));
-end
-Storyline_API.locale.getText = getText;
-
---CHANGE:Shadovv: SetClampedTextureRotation function was implemented in cataclysm
-function SetClampedTextureRotation(texture, rotationDegrees)
-	if (rotationDegrees ~= 0 and rotationDegrees ~= 90 and rotationDegrees ~= 180 and rotationDegrees ~= 270) then
-		error("SetRotation: rotationDegrees must be 0, 90, 180, or 270");
-		return;
-	end
-	
-	if not (texture.rotationDegrees) then
-		texture.origTexCoords = {texture:GetTexCoord()};
-		texture.origWidth = texture:GetWidth();
-		texture.origHeight = texture:GetHeight();
-	end
-	
-	if (texture.rotationDegrees == rotationDegrees) then
-		return;
-	end
-
-	texture.rotationDegrees = rotationDegrees;
-	
-	if (rotationDegrees == 0 or rotationDegrees == 180) then
-		texture:SetWidth(texture.origWidth);
-		texture:SetHeight(texture.origHeight);
-	else
-		texture:SetWidth(texture.origHeight);
-		texture:SetHeight(texture.origWidth);
-	end
-	
-	if (rotationDegrees == 0) then
-		texture:SetTexCoord( texture.origTexCoords[1], texture.origTexCoords[2],
-											texture.origTexCoords[3], texture.origTexCoords[4],
-											texture.origTexCoords[5], texture.origTexCoords[6],
-											texture.origTexCoords[7], texture.origTexCoords[8] );
-	elseif (rotationDegrees == 90) then
-		texture:SetTexCoord( texture.origTexCoords[3], texture.origTexCoords[4],
-											texture.origTexCoords[7], texture.origTexCoords[8],
-											texture.origTexCoords[1], texture.origTexCoords[2],
-											texture.origTexCoords[5], texture.origTexCoords[6] );
-	elseif (rotationDegrees == 180) then
-		texture:SetTexCoord( texture.origTexCoords[7], texture.origTexCoords[8],
-											texture.origTexCoords[5], texture.origTexCoords[6],
-											texture.origTexCoords[3], texture.origTexCoords[4],
-											texture.origTexCoords[1], texture.origTexCoords[2] );
-	elseif (rotationDegrees == 270) then
-		texture:SetTexCoord( texture.origTexCoords[5], texture.origTexCoords[6],
-											texture.origTexCoords[1], texture.origTexCoords[2],
-											texture.origTexCoords[7], texture.origTexCoords[8],
-											texture.origTexCoords[3], texture.origTexCoords[4] );
-	end
-end
+S.L = setmetatable({}, {
+	__index = function(_, key)
+		local value = (current and current[key]) or fallback[key] or key
+		return value
+	end,
+})

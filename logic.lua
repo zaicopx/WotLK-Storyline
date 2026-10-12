@@ -1,383 +1,592 @@
-----------------------------------------------------------------------------------
---  Storyline
---	---------------------------------------------------------------------------
---	Copyright 2015 Sylvain Cossement (telkostrasz@totalrp3.info)
---
---	Licensed under the Apache License, Version 2.0 (the "License");
---	you may not use this file except in compliance with the License.
---	You may obtain a copy of the License at
---
---		http://www.apache.org/licenses/LICENSE-2.0
---
---	Unless required by applicable law or agreed to in writing, software
---	distributed under the License is distributed on an "AS IS" BASIS,
---	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
---	See the License for the specific language governing permissions and
---	limitations under the License.
-----------------------------------------------------------------------------------
+-- logic.lua
+-- Dialog flow, following the Retail Storyline:
+--   * the NPC text is cut in paragraphs shown one after the other in the chat bubble;
+--   * on the LAST paragraph the "next" line of the bubble becomes the finishing action
+--     (check objectives -> accept, complete quest, get reward, first dialog choice...);
+--   * gossip options / quests are listed in a panel, objectives and rewards live in
+--     panels attached to the glowing medallions.
 
--- Storyline API
-local setTooltipForSameFrame, setTooltipAll = Storyline_API.lib.setTooltipForSameFrame, Storyline_API.lib.setTooltipAll;
-local registerHandler = Storyline_API.lib.registerHandler;
-local loc = Storyline_API.locale.getText;
-local playNext = Storyline_API.playNext;
+local S = _G.Storyline
+local L = S.L
+local UI = S.UI
+local R = S.Rewards
 
--- WOW API
-local strsplit, pairs = strsplit, pairs;
-local UnitIsUnit, UnitExists, UnitName = UnitIsUnit, UnitExists, UnitName;
+local floor, max = math.floor, math.max
 
--- UI
-local Storyline_NPCFrame = Storyline_NPCFrame;
-local Storyline_NPCFrameChat, Storyline_NPCFrameChatText = Storyline_NPCFrameChat, Storyline_NPCFrameChatText;
-local Storyline_NPCFrameChatNext, Storyline_NPCFrameChatPrevious = Storyline_NPCFrameChatNext, Storyline_NPCFrameChatPrevious;
-local Storyline_NPCFrameModelsYou, Storyline_NPCFrameModelsMe = Storyline_NPCFrameModelsYou, Storyline_NPCFrameModelsMe;
-local Storyline_NPCFrameDebugText, Storyline_NPCFrameChatName, Storyline_NPCFrameBanner = Storyline_NPCFrameDebugText, Storyline_NPCFrameChatName, Storyline_NPCFrameBanner;
-local Storyline_NPCFrameTitle, Storyline_NPCFrameDebugModelYou, Storyline_NPCFrameDebugModelMe = Storyline_NPCFrameTitle, Storyline_NPCFrameDebugModelYou, Storyline_NPCFrameDebugModelMe;
-local Storyline_NPCFrameDebugScaleSlider = Storyline_NPCFrameDebugScaleSlider;
+local ART = UI.ART
+local ICON = "Interface\\GossipFrame\\"
+local GRAY = { 0.6, 0.6, 0.6 }
+local ANIM = { CHEER = 68, YES = 185, NO = 186 }
 
--- Constants
-local DEBUG = true;
-local LINE_FEED_CODE = string.char(10);
-local CARRIAGE_RETURN_CODE = string.char(13);
-local WEIRD_LINE_BREAK = LINE_FEED_CODE .. CARRIAGE_RETURN_CODE .. LINE_FEED_CODE;
-local CHAT_MARGIN = 70;
+local function stripColors(text)
+	return ((text or ""):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""))
+end
 
---*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
--- LOGIC
---*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
+------------------------------------------------------------------------
+-- Session lifecycle
+------------------------------------------------------------------------
+local pendingClose
 
-local function closeDialog()
-	if Storyline_NPCFrameChat.eventInfo and Storyline_NPCFrameChat.eventInfo.cancelMethod then
-		Storyline_NPCFrameChat.eventInfo.cancelMethod();
+function S.CancelPendingClose()
+	if pendingClose then
+		S.Cancel(pendingClose)
+		pendingClose = nil
+	end
+end
+
+-- The server often sends "closed" and "open" events back to back when moving from one
+-- dialog to the next, so closing is debounced.
+function S.SchedulePendingClose()
+	S.CancelPendingClose()
+	pendingClose = S.After(0.25, function()
+		pendingClose = nil
+		S.EndSession(false)
+	end)
+end
+
+function S.EndSession(callServer)
+	S.CancelPendingClose()
+	local s = S.session
+	S.session = nil
+	if s and callServer then
+		if s.kind == "gossip" then
+			S.API("CloseGossip")
+		elseif s.kind ~= "demo" then
+			S.API("CloseQuest")
+		end
+	end
+	UI.Hide()
+	S.After(0.3, function()
+		if not S.session then S.Compat.Suppress(false) end
+	end)
+end
+
+function S.Close()
+	S.EndSession(true)
+end
+
+-- Called by the frame's OnHide (ESC key, close button, fade finished).
+function S.OnFrameHidden()
+	UI.chat.start = nil
+	pcall(ClearOverrideBindings, UI.frame)
+	if S.session then S.EndSession(true) end
+end
+
+-- If anything in our code errors, hand the original Blizzard windows back so the player
+-- is never stuck with an invisible dialog.
+function S.FailOpen()
+	S.session = nil
+	S.CancelPendingClose()
+	if UI.frame then
+		UI.chat.start = nil
+		UI.frame:Hide()
+	end
+	S.Compat.Suppress(false)
+end
+
+function S.OnResized()
+	local s = S.session
+	if s and s.choices and UI.choices:IsShown() then UI.ShowChoices(s.choices) end
+end
+
+------------------------------------------------------------------------
+-- Text flow
+------------------------------------------------------------------------
+function S.StartDialog(s)
+	S.CancelPendingClose()
+	s.npcUnit = s.npcUnit or S.GetNPCUnit()
+	local name = s.npcName or (s.npcUnit and UnitName(s.npcUnit)) or ""
+	s.texts = S.SplitParagraphs(s.text)
+	if #s.texts == 0 then s.texts = { "" } end
+	s.index = 0
+	S.session = s
+
+	S.Compat.Suppress(true)
+	UI.HideHovers()
+	UI.chatName:SetText(stripColors(name))
+	UI.SetBanner(s.title)
+	UI.RefreshBackground()
+	UI.Show()
+	-- Models are set up after the window has been shown and drawn once; doing it earlier
+	-- (on a hidden frame) can crash the 3.3.5a client.
+	S.After(0.05, function()
+		if S.session ~= s then return end
+		UI.SetupModels(s.npcUnit)
+		S.PlayNext()
+	end)
+end
+
+function S.PlayText(i)
+	local s = S.session
+	local text = s.texts[i]
+	UI.HideHovers()
+
+	local r, g, b
+	if text:byte() == 60 then   -- "<" starts an emote
+		local emote = ChatTypeInfo and ChatTypeInfo["MONSTER_EMOTE"]
+		if emote then r, g, b = emote.r, emote.g, emote.b end
+	end
+	UI.StartText(text, r, g, b)
+
+	local npcDead = s.npcUnit and UnitIsDead(s.npcUnit)
+	if UI.you:IsShown() and not UI.you.isBook and not npcDead then UI.PlayTalk(UI.you, text) end
+
+	if i == #s.texts and s.onLast then s.onLast(s) end
+	UI.ResizeChat()
+end
+
+function S.PlayNext()
+	local s = S.session
+	if not s then return end
+	UI.nextButton:Enable()
+	s.index = s.index + 1
+	local count = #s.texts
+
+	UI.SetNext(L.SL_NEXT)
+	if s.index >= count then
+		local finish = s.finishText
+		if type(finish) == "function" then finish = finish() end
+		if finish then UI.SetNext(finish) end
+	end
+	UI.SetCount(s.index, count)
+
+	if s.index <= count then
+		S.PlayText(s.index)
+	elseif s.finishMethod then
+		s.finishMethod()
 	else
-		Storyline_NPCFrame:Hide();
+		S.Close()
 	end
 end
 
-local function resetDialog()
-	Storyline_NPCFrameObjectivesContent:Hide();
-	Storyline_NPCFrameChat.currentIndex = 0;
-	playNext(Storyline_NPCFrameModelsYou);
-end
-
-local _, _, screenWidth, screenHeight = WorldFrame:GetBoundsRect();
-
-local function hideOriginalFrames()
-	GossipFrame:ClearAllPoints();
-	GossipFrame:SetPoint("TOPLEFT", screenWidth, screenHeight);
-	QuestFrame:ClearAllPoints();
-	QuestFrame:SetPoint("TOPLEFT", screenWidth, screenHeight);
-end
-Storyline_API.hideOriginalFrames = hideOriginalFrames;
-
-local function showOriginalFrames()
-	GossipFrame:ClearAllPoints();
-	GossipFrame:SetPoint("TOPLEFT", 16, -116);
-	QuestFrame:ClearAllPoints();
-	QuestFrame:SetPoint("TOPLEFT", 16, -116);
-end
-
-function Storyline_API.startDialog(targetType, fullText, event, eventInfo)
-	
-	Storyline_NPCFrameDebugText:SetText(event);
-	if Storyline_Data.config.hideOriginalFrames then
-		hideOriginalFrames();
+-- Click on the bubble (or SPACE).
+function S.Advance()
+	if not S.session then return end
+	if UI.IsTyping() then
+		UI.FinishTyping()
+	elseif UI.nextButton:IsEnabled() then   -- disabled while a reward has to be picked
+		S.PlayNext()
 	end
+end
 
+-- Previous button / right click: start the dialog again.
+function S.Rewind()
+	local s = S.session
+	if not s then return end
+	UI.HideHovers()
+	s.index = 0
+	S.PlayNext()
+end
 
-	local guid = UnitGUID(targetType);
-	local type, zero, server_id, instance_id, zone_uid, npc_id, spawn_uid = strsplit("-", guid or "");
-	-- Dirty if to fix the flavor text appearing on naval mission table because Blizzard…
-	if npc_id == "94399" then
-		SelectGossipOption(1);
-		return;
+------------------------------------------------------------------------
+-- Quest actions (through the original buttons, see compat.lua)
+------------------------------------------------------------------------
+function S.Accept()
+	S.Compat.ClickOrCall("QuestFrameAcceptButton", "AcceptQuest")
+	S.SchedulePendingClose()   -- some quests do not close the dialog by themselves
+end
+
+function S.Decline()
+	S.Compat.ClickOrCall("QuestFrameDeclineButton", "DeclineQuest")
+	S.SchedulePendingClose()
+end
+
+function S.CompleteProgress()
+	S.Compat.ClickOrCall("QuestFrameCompleteButton", "CompleteQuest")
+end
+
+function S.TurnIn(choice)
+	local s = S.session
+	if not s or s.kind ~= "complete" then return end
+	choice = choice or 0
+	R.PrepareAutoEquip(choice)
+	S.Compat.TurnInQuest(choice)
+end
+
+------------------------------------------------------------------------
+-- Objectives panel (quest detail / progress)
+------------------------------------------------------------------------
+local function buildObjectives(kind)
+	local c = UI.objContent
+	c.Title:SetText(QUEST_OBJECTIVES or L.SL_OBJECTIVES)
+	if not c.objective then
+		c.objective = c:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+		c.objective:SetJustifyH("LEFT"); c.objective:SetJustifyV("TOP")
+		c.group = c:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+		c.group:SetJustifyH("LEFT"); c.group:SetJustifyV("TOP")
 	end
+	local width = c:GetWidth() - 28
+	local y = 40
 
-	local targetName = UnitName(targetType);
-
-	if targetName and targetName:len() > 0 and targetName ~= UNKNOWN then
-		Storyline_NPCFrameChatName:SetText(targetName);
+	local objectives = S.CleanText(GetObjectiveText())
+	if objectives ~= "" then
+		if kind == "progress" then
+			if IsQuestCompletable() then
+				objectives = "|T" .. ART .. "RAIDFRAME\\ReadyCheck-Ready:15|t |cff00ff00" .. objectives
+			else
+				objectives = "|T" .. ART .. "RAIDFRAME\\ReadyCheck-NotReady:15|t |cffff0000" .. objectives
+			end
+		end
+		c.objective:SetWidth(width)
+		c.objective:SetText(objectives)
+		c.objective:ClearAllPoints()
+		c.objective:SetPoint("TOPLEFT", c, "TOPLEFT", 14, -y)
+		c.objective:Show()
+		y = y + c.objective:GetHeight() + 8
 	else
-		if eventInfo.nameGetter and eventInfo.nameGetter() then
-			Storyline_NPCFrameChatName:SetText(eventInfo.nameGetter());
-		else
-			Storyline_NPCFrameChatName:SetText("");
-		end
+		c.objective:SetText("")
+		c.objective:Hide()
 	end
 
-	if eventInfo.titleGetter and eventInfo.titleGetter() and eventInfo.titleGetter():len() > 0 then
-		Storyline_NPCFrameBanner:Show();
-		Storyline_NPCFrameTitle:SetText(eventInfo.titleGetter());
-		if eventInfo.getTitleColor and eventInfo.getTitleColor() then
-			Storyline_NPCFrameTitle:SetTextColor(eventInfo.getTitleColor());
-		else
-			Storyline_NPCFrameTitle:SetTextColor(0.95, 0.95, 0.95);
-		end
+	local group = S.API("GetSuggestedGroupNum") or 0
+	if group > 0 and QUEST_SUGGESTED_GROUP_NUM then
+		c.group:SetWidth(width)
+		c.group:SetText(string.format(QUEST_SUGGESTED_GROUP_NUM, group))
+		c.group:ClearAllPoints()
+		c.group:SetPoint("TOPLEFT", c, "TOPLEFT", 14, -y)
+		c.group:Show()
+		y = y + c.group:GetHeight() + 8
 	else
-		Storyline_NPCFrameTitle:SetText("");
-		Storyline_NPCFrameBanner:Hide();
+		c.group:Hide()
 	end
 
-	Storyline_NPCFrame.targetType = targetType;
-	Storyline_NPCFrame:Show();
-	Storyline_NPCFrameModelsYou.model = nil;
-	Storyline_NPCFrameModelsMe:SetLight(1, 0, 0, -1, -1, 1, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0);
-	Storyline_NPCFrameModelsMe:SetCamera(1);
-	Storyline_NPCFrameModelsMe:SetFacing(.75);
-	Storyline_NPCFrameModelsMe:SetUnit("player", false);
-	Storyline_NPCFrameModelsMe.model = Storyline_NPCFrameModelsMe:GetModel();
-	Storyline_NPCFrameModelsYou:SetLight(1, 0, 0, 1, 1, 1, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0);
-	Storyline_NPCFrameModelsYou:SetCamera(1);
-	Storyline_NPCFrameModelsYou:SetFacing(-.75);
-	Storyline_NPCFrameModelsYou:SetScale(1);
-	Storyline_NPCFrameModelsYou:SetPosition(0,0,0);
-
-	
-	if UnitExists(targetType) and not UnitIsUnit("player", targetType) then --"npc") then
-		Storyline_NPCFrameModelsYou:SetUnit(targetType, false);
-	else
-		--CHANGES:Lanrutcon:Commented "broken" stuff, added similar functions (No Pandarean models and animations)
-		--Storyline_NPCFrameModelsMe:SetAnimation(520);
-		--Storyline_NPCFrameModelsYou:SetModel("world/expansion04/doodads/pandaren/scroll/pa_scroll_10.mo3");
-		Storyline_API.playAnimationDelay(Storyline_NPCFrameModelsYou, 520, 100, 10);
-		--Storyline_NPCFrameModelsYou:SetModel("World\\Expansion02\\doodads\\dalaran\\dalaran_bookcase_01.m2");
-		--Storyline_NPCFrameModelsYou:SetScale(1.2);
-		--Storyline_NPCFrameModelsYou:SetPosition(0,-0.1,1.5);
-		
-		--CHANGES:Shadovv:changed bookcase to open book + "reading a book" animation
-		Storyline_NPCFrameModelsYou:SetModel("world\\generic\\human\\passive doodads\\books\\BookLargeOpen02.m2");
-		Storyline_NPCFrameModelsYou:SetPosition(0,-0.5,-0.4);
-		Storyline_NPCFrameModelsMe:SetPosition(0, 0, 0.25);
-		Storyline_API.playAnimationDelay(Storyline_NPCFrameModelsMe, 140, 30, 0.5);
-		
-	end
-	Storyline_NPCFrameModelsYou.model = Storyline_NPCFrameModelsYou:GetModel();
-
-	if Storyline_NPCFrameModelsYou.model then
-		Storyline_NPCFrameDebugModelYou:SetText(Storyline_NPCFrameModelsYou.model:gsub("\\", "\\\\"));
-	end
-	if Storyline_NPCFrameModelsMe.model then
-		Storyline_NPCFrameDebugModelMe:SetText(Storyline_NPCFrameModelsMe.model:gsub("\\", "\\\\"));
-	end
-
-	local scale = 0;
-	if Storyline_NPCFrameModelsYou.model and Storyline_NPCFrameModelsMe.model then
-		local key, invertKey = Storyline_NPCFrameModelsMe.model .. "~" .. Storyline_NPCFrameModelsYou.model, Storyline_NPCFrameModelsYou.model .. "~" .. Storyline_NPCFrameModelsMe.model;
-		scale = Storyline_Data.debug.scaling[key] or Storyline_SCALE_MAPPING[key] or -(Storyline_Data.debug.scaling[invertKey] or Storyline_SCALE_MAPPING[invertKey] or 0);
-	end
-	Storyline_NPCFrameDebugScaleSlider:SetValue(scale);
-	
-	--CHANGE:Shadovv: changes position of some creatures defined in structures
-	if (Storyline_C_POSITION[Storyline_NPCFrameModelsYou.model] ~= nil) then
-		Storyline_NPCFrameModelsYou:SetPosition(Storyline_C_POSITION[Storyline_NPCFrameModelsYou.model][1],Storyline_C_POSITION[Storyline_NPCFrameModelsYou.model][2],Storyline_C_POSITION[Storyline_NPCFrameModelsYou.model][3]);
-	end;
-
-	fullText = fullText:gsub(LINE_FEED_CODE .. "+", "\n");
-	fullText = fullText:gsub(WEIRD_LINE_BREAK, "\n");
-
-	local texts = { strsplit("\n", fullText) };
-	if texts[#texts]:len() == 0 then
-		texts[#texts] = nil;
-	end
-	Storyline_NPCFrameChat.texts = texts;
-	Storyline_NPCFrameChat.currentIndex = 0;
-	Storyline_NPCFrameChat.eventInfo = eventInfo;
-	Storyline_NPCFrameChat.event = event;
-	Storyline_NPCFrameObjectivesContent:Hide();
-	Storyline_NPCFrameChatPrevious:Hide();
-
-	playNext(Storyline_NPCFrameModelsYou);
+	y = R.Layout(c, R.Gather(kind == "progress" and "progress" or "detail"),
+		kind == "progress" and "progress" or "detail", y, false)
+	c:SetHeight(y + 12)
 end
 
---*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
--- TEXT ANIMATION
---*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
-
-local ANIMATION_TEXT_SPEED = 80;
-local textSpeedFactor = 0.5;
-
-local function onUpdateChatText(self, elapsed)
-	if self.start and Storyline_NPCFrameChatText:GetText() and Storyline_NPCFrameChatText:GetText():len() > 0 then
-		self.start = self.start + (elapsed * (ANIMATION_TEXT_SPEED * textSpeedFactor));
-		if textSpeedFactor == 0 or self.start >= Storyline_NPCFrameChatText:GetText():len() then
-			self.start = nil;
-			Storyline_NPCFrameChatText:SetAlphaGradient(Storyline_NPCFrameChatText:GetText():len(), 1);
-		else
-			Storyline_NPCFrameChatText:SetAlphaGradient(self.start, 30);
-		end
+local function showObjectives(kind)
+	UI.objButton:Show()
+	UI.objImage:SetTexture(ART .. "FriendsFrame\\FriendsFrameScrollIcon")
+	UI.objImage:SetDesaturated(false)
+	UI.SetTooltip(UI.objButton, QUEST_OBJECTIVES or L.SL_OBJECTIVES, L.SL_CHECK_OBJ, "ANCHOR_TOP")
+	buildObjectives(kind)
+	if kind == "detail" and (GetNumQuestItems() or 0) > 0 then
+		local _, icon = GetQuestItemInfo("required", 1)
+		if icon then UI.objImage:SetTexture(icon) end
+	elseif kind == "progress" then
+		UI.objImage:SetDesaturated(not IsQuestCompletable())
 	end
 end
 
---*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
--- INIT
---*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
+local function pinObjectives()
+	UI.SetTooltip(UI.objButton, nil)
+	GameTooltip:Hide()
+	UI.PinHover(UI.objContent, UI.objButton)
+end
 
-Storyline_API.addon = LibStub("AceAddon-3.0"):NewAddon("Storyline", "AceConsole-3.0");
+------------------------------------------------------------------------
+-- Rewards panel (quest complete)
+------------------------------------------------------------------------
+local function buildRewards(data)
+	local c = UI.rewContent
+	c.Title:SetText(REWARDS or L.SL_REWARDS)
+	local y = R.Layout(c, data, "complete", 40, true)
+	c:SetHeight(y + 12)
+end
 
-function Storyline_API.addon:OnEnable()
-
-	if not Storyline_Data then
-		Storyline_Data = {};
+------------------------------------------------------------------------
+-- Choices (gossip options / quests)
+------------------------------------------------------------------------
+local function questLabel(title, level, daily)
+	local text = title or "?"
+	if level and level > 0 then
+		text = "|cff" .. S.LevelColorHex(level) .. "[" .. level .. "]|r " .. text
 	end
-	if not Storyline_Data.debug then
-		Storyline_Data.debug = {};
-	end
-	if not Storyline_Data.debug.scaling then
-		Storyline_Data.debug.scaling = {};
-	end
-	if not Storyline_Data.debug.timing then
-		Storyline_Data.debug.timing = {};
-	end
-	if not Storyline_Data.config then
-		Storyline_Data.config = {};
+	if daily then text = text .. "  |cff66ccff(" .. L.SL_DAILY .. ")|r" end
+	return text
+end
+
+local function gossipChoices()
+	local list = {}
+	local hasQuests, hasPlain = false, false
+
+	local numActive = GetNumGossipActiveQuests() or 0
+	if numActive > 0 then
+		local d = S.Pack(GetGossipActiveQuests())
+		local stride = max(3, floor(d.n / numActive))
+		for i = 1, numActive do
+			local base = (i - 1) * stride
+			local title, level = d[base + 1], d[base + 2]
+			local trivial = stride >= 4 and d[base + 3]
+			local complete = d[base + stride]
+			local index = i
+			hasQuests = true
+			list[#list + 1] = {
+				text = questLabel(title, level),
+				icon = ICON .. (complete and "ActiveQuestIcon" or "IncompleteQuestIcon"),
+				color = trivial and GRAY or nil,
+				onClick = function() S.API("SelectGossipActiveQuest", index) end,
+			}
+		end
 	end
 
-	ForceGossip = function() return Storyline_Data.config.forceGossip == true end
+	local numAvailable = GetNumGossipAvailableQuests() or 0
+	if numAvailable > 0 then
+		local d = S.Pack(GetGossipAvailableQuests())
+		local stride = max(3, floor(d.n / numAvailable))   -- 5 on 3.3.5a: title, level, trivial, daily, repeatable
+		for i = 1, numAvailable do
+			local base = (i - 1) * stride
+			local title, level, trivial = d[base + 1], d[base + 2], d[base + 3]
+			local daily = stride >= 4 and d[base + 4]
+			local repeatable = stride >= 5 and d[base + 5]
+			local index = i
+			hasQuests = true
+			local icon = "AvailableQuestIcon"
+			if daily then icon = "DailyQuestIcon" elseif repeatable then icon = "DailyActiveQuestIcon" end
+			list[#list + 1] = {
+				text = questLabel(title, level, daily),
+				icon = ICON .. icon,
+				color = trivial and GRAY or nil,
+				onClick = function() S.API("SelectGossipAvailableQuest", index) end,
+			}
+		end
+	end
 
-	Storyline_API.locale.init();
+	local numOptions = GetNumGossipOptions() or 0
+	if numOptions > 0 then
+		local d = S.Pack(GetGossipOptions())
+		local stride = max(2, floor(d.n / numOptions))
+		for i = 1, numOptions do
+			local base = (i - 1) * stride
+			local text, kind = d[base + 1], d[base + 2] or "gossip"
+			local index = i
+			if kind == "gossip" then hasPlain = true end
+			list[#list + 1] = {
+				text = text or "...",
+				icon = ICON .. kind .. "GossipIcon",
+				onClick = function() S.API("SelectGossipOption", index) end,
+			}
+		end
+	end
+	return list, hasQuests, hasPlain
+end
 
-	Storyline_NPCFrameBG:SetDesaturated(true);
-	Storyline_NPCFrameChatNext:SetScript("OnClick", function()
-		if Storyline_NPCFrameChat.start and Storyline_NPCFrameChat.start < Storyline_NPCFrameChatText:GetText():len() then
-			Storyline_NPCFrameChat.start = Storyline_NPCFrameChatText:GetText():len();
+local function greetingChoices()
+	local list = {}
+	for i = 1, (GetNumActiveQuests() or 0) do
+		local index = i
+		local trivial = S.API("IsActiveQuestTrivial", i)
+		list[#list + 1] = {
+			text = questLabel(GetActiveTitle(i), S.API("GetActiveLevel", i)),
+			icon = ICON .. "ActiveQuestIcon",
+			color = trivial and GRAY or nil,
+			onClick = function() S.API("SelectActiveQuest", index) end,
+		}
+	end
+	for i = 1, (GetNumAvailableQuests() or 0) do
+		local index = i
+		local trivial = S.API("IsAvailableQuestTrivial", i)
+		list[#list + 1] = {
+			text = questLabel(GetAvailableTitle(i), S.API("GetAvailableLevel", i)),
+			icon = ICON .. "AvailableQuestIcon",
+			color = trivial and GRAY or nil,
+			onClick = function() S.API("SelectAvailableQuest", index) end,
+		}
+	end
+	return list
+end
+
+-- On the last paragraph the choices appear, and the "next" line offers the first one.
+local function attachChoiceFlow(s)
+	s.onLast = function()
+		if #s.choices > 0 then UI.ShowChoices(s.choices) end
+	end
+	s.finishText = function()
+		local first = s.choices[1]
+		return first and stripColors(first.text) or GOODBYE or L.SL_WELL
+	end
+	s.finishMethod = function()
+		local first = s.choices[1]
+		if first then first.onClick() else S.Close() end
+	end
+end
+
+------------------------------------------------------------------------
+-- Event entry points
+------------------------------------------------------------------------
+function S.OnGossipShow()
+	local choices, hasQuests, hasPlain = gossipChoices()
+	if not (hasQuests or hasPlain or S.db.forceGossip) then
+		-- Vendor, flight master, ...: let the original frame do its job.
+		if S.session then S.EndSession(false) end
+		S.Compat.Suppress(false)
+		return
+	end
+	local s = {
+		kind = "gossip",
+		text = GetGossipText(),
+		choices = choices,
+		choiceHeader = hasQuests and L.SL_SELECT_AVAILABLE_QUEST or L.SL_SELECT_DIALOG_OPTION,
+	}
+	attachChoiceFlow(s)
+	S.StartDialog(s)
+end
+
+function S.OnQuestGreeting()
+	local s = {
+		kind = "greeting",
+		text = GetGreetingText(),
+		title = GetTitleText(),
+		choices = greetingChoices(),
+		choiceHeader = L.SL_SELECT_AVAILABLE_QUEST,
+	}
+	attachChoiceFlow(s)
+	S.StartDialog(s)
+end
+
+function S.OnQuestDetail()
+	local s = { kind = "detail", text = GetQuestText(), title = GetTitleText() }
+	s.onLast = function() showObjectives("detail") end
+	s.finishText = L.SL_CHECK_OBJ
+	s.finishMethod = function()
+		if not UI.objContent:IsShown() then
+			pinObjectives()
+			UI.objYes:Show()
+			UI.objNo:Show()
+			UI.SetNext(L.SL_ACCEPTANCE)
 		else
-			playNext(Storyline_NPCFrameModelsYou);
+			S.Accept()
 		end
-	end);
-	Storyline_NPCFrameChatPrevious:SetScript("OnClick", resetDialog);
-	Storyline_NPCFrameChat:SetScript("OnUpdate", onUpdateChatText);
-	Storyline_NPCFrameClose:SetScript("OnClick", closeDialog);
-	Storyline_NPCFrameRewardsItem:SetScale(1.5);
+	end
+	S.StartDialog(s)
+end
 
-	Storyline_NPCFrameModelsYou.animTab = {};
-	Storyline_NPCFrameModelsMe.animTab = {};
-
-	Storyline_NPCFrameModelsYou:SetScript("OnUpdate", function(self, elapsed)
-		if self.spin then
-			self.spinAngle = self.spinAngle - (elapsed / 2);
-			self:SetFacing(self.spinAngle);
+function S.OnQuestProgress()
+	local s = { kind = "progress", text = GetProgressText(), title = GetTitleText() }
+	s.onLast = function() showObjectives("progress") end
+	s.finishText = L.SL_CHECK_OBJ
+	s.finishMethod = function()
+		if not UI.objContent:IsShown() then
+			pinObjectives()
+			if IsQuestCompletable() then
+				UI.objOK:Show()
+				UI.SetNext(L.SL_CONTINUE)
+				UI.PlayAnimation(UI.me, ANIM.YES)
+			else
+				UI.SetNext(L.SL_NOT_YET)
+				UI.PlayAnimation(UI.me, ANIM.NO)
+			end
+		elseif IsQuestCompletable() then
+			S.CompleteProgress()
+		else
+			S.Close()
 		end
-	end);
+	end
+	S.StartDialog(s)
+end
 
-	-- Register events
-	Storyline_API.initEventsStructure();
-
-	-- Closing
-	registerHandler("GOSSIP_CLOSED", function()
-		Storyline_NPCFrame:Hide();
-	end);
-	registerHandler("QUEST_FINISHED", function()
-		Storyline_NPCFrame:Hide();
-	end);
-
-	-- DressUpFrame
-	DressUpFrameCloseButton:HookScript("OnClick", function()
-		if Storyline_Data.config.hideOriginalFrames and Storyline_NPCFrame:IsVisible() then
-			hideOriginalFrames();
+function S.OnQuestComplete()
+	local s = { kind = "complete", text = GetRewardText(), title = GetTitleText() }
+	s.onLast = function()
+		local data = R.Gather("complete")
+		if data.total > 0 then
+			UI.rewFrame:Show()
+			UI.rewItem.Icon:SetTexture(R.BestIcon(data))
+			UI.SetTooltip(UI.rewItem, REWARDS or L.SL_REWARDS, L.SL_GET_REWARD, "ANCHOR_TOP")
+			buildRewards(data)
+		else
+			UI.rewFrame:Hide()
 		end
+	end
+	s.finishText = function()
+		return R.Gather("complete").total > 0 and L.SL_GET_REWARD or L.SL_CONTINUE
+	end
+	s.finishMethod = function()
+		local data = R.Gather("complete")
+		local numChoices = #data.choices
+		if not UI.rewContent:IsShown() and data.total > 0 then
+			UI.SetTooltip(UI.rewItem, nil)
+			GameTooltip:Hide()
+			buildRewards(data)
+			UI.PinHover(UI.rewContent, UI.rewItem, 0, -20)
+			if numChoices > 1 then
+				UI.SetNext(L.SL_SELECT_REWARD, false)   -- click one of the rewards instead
+			else
+				UI.SetNext(L.SL_CONTINUE)
+			end
+		elseif numChoices == 1 then
+			S.TurnIn(1)
+		elseif numChoices == 0 then
+			S.TurnIn(0)
+		end
+	end
+	S.StartDialog(s)
+end
+
+function S.OnGossipClosed()
+	local s = S.session
+	if s and s.kind == "gossip" then S.SchedulePendingClose() end
+end
+
+function S.OnQuestFinished()
+	S.Compat.OnQuestFinished()
+	local s = S.session
+	if s and s.kind ~= "gossip" and s.kind ~= "demo" then S.SchedulePendingClose() end
+end
+
+-- Item information (icons, names) arrives asynchronously: redraw the panels.
+function S.OnQuestItemUpdate()
+	local s = S.session
+	if not s or s.index < #s.texts then return end
+	if s.kind == "complete" then
+		local data = R.Gather("complete")
+		if data.total > 0 then
+			UI.rewItem.Icon:SetTexture(R.BestIcon(data))
+			buildRewards(data)
+		end
+	elseif s.kind == "detail" or s.kind == "progress" then
+		buildObjectives(s.kind)
+	end
+end
+
+-- /storyline test
+function S.Demo()
+	local unit = S.GetNPCUnit() or (UnitExists("target") and not UnitIsUnit("player", "target") and "target") or nil
+	local s = {
+		kind = "demo",
+		npcUnit = unit,
+		npcName = unit and UnitName(unit) or L.SL_DEMO_NAME,
+		title = L.SL_STORYLINE,
+		text = L.SL_DEMO_TEXT,
+		choiceHeader = L.SL_SELECT_DIALOG_OPTION,
+		choices = {
+			{ text = L.SL_DEMO_CHOICE1, icon = ICON .. "GossipGossipIcon", onClick = function() S.Close() end },
+			{ text = L.SL_DEMO_CHOICE2, icon = ICON .. "AvailableQuestIcon", onClick = function() S.Close() end },
+		},
+	}
+	attachChoiceFlow(s)
+	S.StartDialog(s)
+end
+
+------------------------------------------------------------------------
+-- Wiring of the medallion buttons (after UI.Create)
+------------------------------------------------------------------------
+function S.InitLogic()
+	UI.objButton:SetScript("OnClick", function()
+		local s = S.session
+		if s and s.finishMethod then s.finishMethod() end
+	end)
+	UI.rewItem:SetScript("OnClick", function()
+		local s = S.session
+		if s and s.finishMethod then s.finishMethod() end
 	end)
 
-	-- Resizing
-	local resizeChat = function()
-		Storyline_NPCFrameChatText:SetWidth(Storyline_NPCFrame:GetWidth() - 150);
-		Storyline_NPCFrameChat:SetHeight(Storyline_NPCFrameChatText:GetHeight() + CHAT_MARGIN + 5);
-		Storyline_NPCFrameGossipChoices:SetWidth(Storyline_NPCFrame:GetWidth() - 400);
-	end
-	Storyline_NPCFrameChatText:SetWidth(550);
-	Storyline_NPCFrameResizeButton.onResizeStop = function(width, height)
-		resizeChat();
-		Storyline_Data.config.width = width;
-		Storyline_Data.config.height = height;
-	end;
-	Storyline_NPCFrame:SetSize(Storyline_Data.config.width or 700, Storyline_Data.config.height or 450);
-	resizeChat();
+	UI.objYes:SetScript("OnClick", function() S.Accept() end)
+	UI.objYes:SetScript("OnEnter", function(self)
+		UI.PlayAnimation(UI.me, ANIM.CHEER)
+		GameTooltip:SetOwner(self, "ANCHOR_TOP")
+		GameTooltip:SetText(L.SL_ACCEPTANCE, 1, 0.82, 0)
+		GameTooltip:Show()
+	end)
+	UI.objYes:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
-
-	local resizeModels = function(scale)
-		local margin = scale < 0 and -scale or 0;
-		Storyline_NPCFrameModelsMe:ClearAllPoints();
-		Storyline_NPCFrameModelsMe:SetPoint("TOP", 0, -(margin * 2));
-		Storyline_NPCFrameModelsMe:SetPoint("LEFT", margin, 0);
-		Storyline_NPCFrameModelsMe:SetPoint("BOTTOM", 0, 0);
-		Storyline_NPCFrameModelsMe:SetPoint("RIGHT", Storyline_NPCFrameModelsPoint, "LEFT", -margin, 0);
-
-		margin = scale > 0 and scale or 0;
-		Storyline_NPCFrameModelsYou:ClearAllPoints();
-		Storyline_NPCFrameModelsYou:SetPoint("TOP", 0, -(margin * 2));
-		Storyline_NPCFrameModelsYou:SetPoint("RIGHT", -margin, 0);
-		Storyline_NPCFrameModelsYou:SetPoint("BOTTOM", 0, 0);
-		Storyline_NPCFrameModelsYou:SetPoint("LEFT", Storyline_NPCFrameModelsPoint, "RIGHT", margin, 0);
-	end
-
-	-- Debug
-	Storyline_NPCFrameDebug:Hide();
-	Storyline_NPCFrameDebugScaleSlider:SetScript("OnValueChanged", function(self, scale)
-		Storyline_NPCFrameDebugScaleSliderValText:SetText("Scale: " .. scale);
-		resizeModels(scale);
-		Storyline_Data.debug.scaling[Storyline_NPCFrameDebugModelMe:GetText():gsub("\\\\", "\\") .. "~" .. Storyline_NPCFrameDebugModelYou:GetText():gsub("\\\\", "\\")] = scale;
-	end);
-
-	-- Slash command to reset frames
-	Storyline_API.addon:RegisterChatCommand("storyline", function()
-		ToggleFrame(Storyline_NPCFrameDebug);
-	end);
-
-	-- Config
-	setTooltipAll(Storyline_NPCFrameConfigButton, "TOP", 0, 0, loc("SL_CONFIG"));
-	Storyline_NPCFrameConfigSpeedSliderLow:SetText(loc("SL_CONFIG_TEXTSPEED_INSTANT"));
-	Storyline_NPCFrameConfigSpeedSliderHigh:SetText(loc("SL_CONFIG_TEXTSPEED_HIGH"));
-	Storyline_NPCFrameConfigText:SetText(loc("SL_CONFIG"));
-	Storyline_NPCFrameConfigSpeedSlider:SetScript("OnValueChanged", function(self, scale)
-		Storyline_NPCFrameConfigSpeedSliderValText:SetText(loc("SL_CONFIG_TEXTSPEED"):format(scale));
-		textSpeedFactor = scale;
-		Storyline_Data.config.textSpeedFactor = textSpeedFactor;
-	end);
-	textSpeedFactor = Storyline_Data.config.textSpeedFactor or textSpeedFactor;
-	Storyline_NPCFrameConfigSpeedSlider:SetValue(textSpeedFactor);
-	
-	-- Auto equip option
-	Storyline_NPCFrameConfig.AutoEquip.Text:SetText(loc("SL_CONFIG_AUTOEQUIP"));
-	setTooltipForSameFrame(Storyline_NPCFrameConfig.AutoEquip, "RIGHT", 0, 0, loc("SL_CONFIG_AUTOEQUIP"), loc("SL_CONFIG_AUTOEQUIP_TT"));
-	Storyline_NPCFrameConfig.AutoEquip:SetScript("OnClick", function(self)
-		Storyline_Data.config.autoEquip = self:GetChecked() == true;
-	end);
-	Storyline_NPCFrameConfig.AutoEquip:SetChecked(Storyline_Data.config.autoEquip);
-
-	-- Force gossip option
-	Storyline_NPCFrameConfig.ForceGossip.Text:SetText(loc("SL_CONFIG_FORCEGOSSIP"));
-	setTooltipForSameFrame(Storyline_NPCFrameConfig.ForceGossip, "RIGHT", 0, 0, loc("SL_CONFIG_FORCEGOSSIP"), loc("SL_CONFIG_FORCEGOSSIP_TT"));
-	Storyline_NPCFrameConfig.ForceGossip:SetScript("OnClick", function(self)
-		Storyline_Data.config.forceGossip = self:GetChecked() == true;
-	end);
-	Storyline_NPCFrameConfig.ForceGossip:SetChecked(Storyline_Data.config.forceGossip);
-
-	-- Hide original frames option
-	Storyline_NPCFrameConfig.HideOriginalFrames.Text:SetText(loc("SL_CONFIG_HIDEORIGINALFRAMES"));
-	setTooltipForSameFrame(Storyline_NPCFrameConfig.HideOriginalFrames, "RIGHT", 0, 0, loc("SL_CONFIG_HIDEORIGINALFRAMES"), loc("SL_CONFIG_HIDEORIGINALFRAMES_TT"));
-	Storyline_NPCFrameConfig.HideOriginalFrames:SetScript("OnClick", function(self)
-		Storyline_Data.config.hideOriginalFrames = self:GetChecked() == true;
-		if Storyline_Data.config.hideOriginalFrames then
-			hideOriginalFrames();
-		else
-			showOriginalFrames();
-		end
-	end);
-	if Storyline_Data.config.hideOriginalFrames == nil then
-		Storyline_Data.config.hideOriginalFrames = true;
-	end
-	Storyline_NPCFrameConfig.HideOriginalFrames:SetChecked(Storyline_Data.config.hideOriginalFrames);
-
-	local localeTab = {
-		{"English", "enUS"},
-		{"Français", "frFR"},
-	};
-	local init = true;
-	Storyline_API.lib.setupListBox(Storyline_NPCFrameConfigLocale, localeTab, function(locale)
-		Storyline_Data.config.locale = locale;
-		if not init then
-			ReloadUI();
-		end
-	end, nil, 100, true);
-	Storyline_NPCFrameConfigLocale:SetSelectedValue(Storyline_Data.config.locale or Storyline_API.locale.DEFAULT_LOCALE);
-	init = false;
+	UI.objNo:SetScript("OnClick", function() S.Decline() end)
+	UI.objNo:SetScript("OnEnter", function(self)
+		UI.PlayAnimation(UI.me, ANIM.NO)
+		GameTooltip:SetOwner(self, "ANCHOR_TOP")
+		GameTooltip:SetText(L.SL_DECLINE, 1, 0.82, 0)
+		GameTooltip:Show()
+	end)
+	UI.objNo:SetScript("OnLeave", function() GameTooltip:Hide() end)
 end
