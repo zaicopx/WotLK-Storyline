@@ -1,5 +1,17 @@
 # Changelog
 
+## 3.4.0
+- New: **location background**. While a dialog is open, a picture of the zone you are in is shown behind the
+  models (vanilla zones only for now: 36 pictures, plus instances / battlegrounds that belong to one of them,
+  e.g. Blackrock Depths, Alterac Valley). Zones without a picture keep the normal faction-coloured background.
+- New option "Location background" (on by default) and `/storyline bg` to turn it on / off.
+- The picture is cut to the shape of the window instead of being stretched, and follows window resizing.
+- Zone names are matched in English, German and French (translations from Babble-Zone 2.2); other languages
+  fall back to the English names.
+- New command `/storyline zone`: prints the zone name the game returns, the sub zone and the picture chosen.
+- The pictures are in `Artwork/Locations/` (taken from VanillaStoryline, see `Sources.txt`). When that folder and
+  `Artwork/Locations/Installed.lua` are removed, the addon keeps working with the plain background.
+
 ## 3.3.1
 - Fix: accepting a quest with the green check mark did nothing. In 3.3.5a `Button:IsEnabled()` returns
   1 or 0 and 0 counts as "true" in Lua, so a DISABLED original Accept button was treated as usable;

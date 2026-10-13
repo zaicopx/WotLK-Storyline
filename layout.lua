@@ -617,6 +617,7 @@ end
 function UI.Show()
 	local f = UI.frame
 	S.CancelFade(f)
+	if UI.UpdateLocationBackground then UI.UpdateLocationBackground() end
 	if not f:IsShown() then
 		f:SetAlpha(0)
 		f:Show()
@@ -748,6 +749,15 @@ function UI.Create()
 	UI.bgArt:SetTexture(ART .. "DRESSUPFRAME\\DressUpBackground-NightElf1")
 	UI.bgArt:SetAlpha(0.5)
 	UI.bgArt:SetDesaturated(true)
+
+	-- picture of the zone (locations.lua); replaces bgArt while it is shown
+	UI.locArt = bg:CreateTexture(nil, "ARTWORK")
+	UI.locArt:SetPoint("TOPLEFT", f, "TOPLEFT", 20, -20)
+	UI.locArt:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -20, 20)
+	UI.locArt:Hide()
+	f:HookScript("OnSizeChanged", function()
+		if UI.CropLocationArt then UI.CropLocationArt() end
+	end)
 
 	---------------- models ----------------
 	local models = CreateFrame("Frame", "Storyline_NPCFrameModels", f)

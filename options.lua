@@ -30,6 +30,8 @@ local CHECKS = {
 	  onChange = function() S.UI.RefreshModelTransforms() end },
 	{ key = "tintBackground", label = "SL_CONFIG_TINT", tip = "SL_CONFIG_TINT_TT",
 	  onChange = function() S.UI.RefreshBackground() end },
+	{ key = "locationBackground", label = "SL_CONFIG_LOCATION", tip = "SL_CONFIG_LOCATION_TT",
+	  onChange = function() S.UI.UpdateLocationBackground() end },
 	{ key = "dimWorld", label = "SL_CONFIG_DIM", tip = "SL_CONFIG_DIM_TT",
 	  onChange = function()
 		if S.db.dimWorld and (S.db.dimAmount or 0) <= 0 then S.db.dimAmount = 0.5; O.Refresh() end
@@ -232,6 +234,19 @@ SlashCmdList["STORYLINE"] = function(msg)
 		S.db.flipFacing = not S.db.flipFacing
 		S.UI.RefreshModelTransforms()
 		S.Print("flipFacing = " .. tostring(S.db.flipFacing))
+	elseif msg == "bg" then
+		-- /storyline bg : location background on / off
+		S.db.locationBackground = not S.db.locationBackground
+		S.UI.UpdateLocationBackground()
+		if O.Refresh then O.Refresh() end
+		S.Print("location background: " .. (S.db.locationBackground and "on" or "off")
+			.. (S.LocationArtInstalled and "" or "  (pictures are not installed)"))
+	elseif msg == "zone" then
+		-- what the location background sees
+		local zone = (GetRealZoneText and GetRealZoneText()) or ""
+		S.Print("zone: '" .. tostring(zone) .. "' | sub zone: '" .. tostring(GetSubZoneText and GetSubZoneText() or "")
+			.. "' | picture: " .. tostring(S.GetLocationArt and S.GetLocationArt() or "none")
+			.. " | pictures installed: " .. tostring(S.LocationArtInstalled and true or false))
 	elseif msg == "close" then
 		-- emergency exit: closes the window and the original dialog no matter what state they are in
 		S.ForceClose()

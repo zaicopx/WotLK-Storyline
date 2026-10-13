@@ -5,7 +5,7 @@
 local S = _G.Storyline or {}
 _G.Storyline = S
 
-S.VERSION = "3.3.1"
+S.VERSION = "3.4.0"
 
 local tinsert, tremove = table.insert, table.remove
 local GetTime = GetTime
@@ -34,6 +34,7 @@ local DEFAULTS = {
 	keyShortcuts = true,
 	flipFacing = false,
 	tintBackground = true,
+	locationBackground = true, -- picture of the zone behind the models (vanilla zones for now)
 	width = 700,
 	height = 450,
 }
