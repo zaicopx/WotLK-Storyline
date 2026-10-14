@@ -212,9 +212,14 @@ function S.PlayText(i)
 		if emote then r, g, b = emote.r, emote.g, emote.b end
 	end
 	UI.StartText(text, r, g, b)
+	if UI.UpdateLocationTint then UI.UpdateLocationTint() end   -- the game time moves on
 
 	local npcDead = s.npcUnit and UnitIsDead(s.npcUnit)
-	if UI.you:IsShown() and not UI.you.isBook and not npcDead then UI.PlayTalk(UI.you, text) end
+	if UI.you:IsShown() and not UI.you.isBook and not npcDead then
+		UI.PlayTalk(UI.you, text)
+		if UI.PlayEmote then UI.PlayEmote(UI.you, text) end   -- "<Name bows.>" plays the bow animation
+	end
+	if UI.CineFocus then UI.CineFocus(UI.you:IsShown() and "you" or nil) end   -- the NPC is talking
 
 	if i == #s.texts and s.onLast then s.onLast(s) end
 	UI.ResizeChat()

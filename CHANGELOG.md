@@ -1,5 +1,29 @@
 # Changelog
 
+## 3.5.0
+- New: **cinematic mode**. The camera slowly zooms in on the model that is talking (the other one steps back a
+  little); when the dialog asks something of you (choices, objectives, rewards) the focus moves to your character
+  and goes back to the NPC with the next line. Only the two models are moved with `SetPosition`, from an
+  `OnUpdate`. Models drawn with a model camera (creatures) are left alone.
+  Option "Cinematic mode" (on by default), `/storyline cine`, `/storyline cine <0-100>` (strength, default 50),
+  `/storyline cine flip` (reverse the direction).
+- New: **NPC emotes play animations**. A text like `<Thrall bows.>` plays the bow animation (also wave, laugh,
+  cry, salute). Only played on player race models (an unknown sequence can crash the client); other models stand.
+  Option "NPC emotes play animations" (on by default), `/storyline emote`. English verbs only.
+- New: **tint of the location picture by game time**: dark blue at night, warm at dawn and dusk, untouched during
+  the day. Option "Tint background by game time" (on by default), `/storyline tint`.
+- New file `effects.lua`; `UI.PlayAnimation` takes an optional duration and a "trusted" flag.
+
+## 3.4.1
+- New: location pictures for **The Burning Crusade** zones: Hellfire Peninsula, Zangarmarsh, Terokkar Forest,
+  Nagrand, Blade's Edge Mountains, Netherstorm, Shadowmoon Valley, Shattrath City, Eversong Woods, Ghostlands,
+  Silvermoon City, Isle of Quel'Danas, Azuremyst Isle, Bloodmyst Isle and The Exodar (16 pictures).
+- Sub zones can have a picture of their own: **Area 52** (inside Netherstorm) shows its own picture.
+- Outland dungeons / raids use the picture of their zone (e.g. Mana-Tombs and Sethekk Halls: Terokkar Forest,
+  Black Temple: Shadowmoon Valley, Sunwell Plateau and Magisters' Terrace: Isle of Quel'Danas); Karazhan uses
+  the Deadwind Pass picture.
+- The new zone names are matched in English only (German / French translations are not included yet).
+
 ## 3.4.0
 - New: **location background**. While a dialog is open, a picture of the zone you are in is shown behind the
   models (vanilla zones only for now: 36 pictures, plus instances / battlegrounds that belong to one of them,

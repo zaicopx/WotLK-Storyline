@@ -5,7 +5,7 @@
 local S = _G.Storyline or {}
 _G.Storyline = S
 
-S.VERSION = "3.4.0"
+S.VERSION = "3.5.0"
 
 local tinsert, tremove = table.insert, table.remove
 local GetTime = GetTime
@@ -34,7 +34,12 @@ local DEFAULTS = {
 	keyShortcuts = true,
 	flipFacing = false,
 	tintBackground = true,
-	locationBackground = true, -- picture of the zone behind the models (vanilla zones for now)
+	locationBackground = true, -- picture of the zone behind the models
+	timeTint = true,           -- the location picture follows the game time (dark blue at night, warm at dawn / dusk)
+	cinematicMode = true,      -- slow zoom on the model that is "talking", focus moves to you when you have to answer
+	cinematicStrength = 0.5,   -- 0..1, how far the cinematic camera moves
+	cinematicSign = 1,         -- 1 or -1: direction of the zoom (flip with /storyline cine flip if it moves the wrong way)
+	emoteAnimations = true,    -- "<Name bows.>" plays the bow / laugh / cry / salute / wave animation
 	width = 700,
 	height = 450,
 }
@@ -66,6 +71,8 @@ function S.InitDB()
 	mergeDefaults(d.config, DEFAULTS)
 	local dim = tonumber(d.config.dimAmount) or DEFAULTS.dimAmount
 	d.config.dimAmount = math.max(0, math.min(1, dim))
+	d.config.cinematicStrength = math.max(0, math.min(1, tonumber(d.config.cinematicStrength) or DEFAULTS.cinematicStrength))
+	if d.config.cinematicSign ~= -1 then d.config.cinematicSign = 1 end
 	S.data = d
 	S.db = d.config
 	S.scaling = d.debug.scaling

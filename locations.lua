@@ -1,10 +1,11 @@
 -- locations.lua
 -- Picture of the zone behind the models ("location background").
 --
--- Pictures: Artwork\Locations\<Name>.blp (512x256), taken from VanillaStoryline (see
--- Artwork\Locations\Sources.txt). Only vanilla zones have a picture for now; every other zone keeps the
--- plain (faction-tinted) background. The feature switches itself off when the pictures are not installed
--- (Artwork\Locations\Installed.lua missing), so the addon also works without them.
+-- Pictures: Artwork\Locations\<Name>.blp (512x256). Vanilla pictures come from VanillaStoryline (see
+-- Artwork\Locations\Sources.txt); the Burning Crusade (Outland, Quel'Thalas, Azuremyst / Bloodmyst) pictures were
+-- added in 3.4.1. Every zone without a picture keeps the plain (faction-tinted) background. The feature switches
+-- itself off when the pictures are not installed (Artwork\Locations\Installed.lua missing), so the addon also
+-- works without them.
 --
 -- Zone names are matched by English name. Other client languages: German and French are translated below
 -- (names from Babble-Zone 2.2, as used by VanillaStoryline); other languages fall back to the English names.
@@ -61,6 +62,49 @@ local ZONE_FILE = {
 	["Upper Blackrock Spire"] = "BlackrockMountain",
 	["Molten Core"] = "BlackrockMountain",
 	["Blackwing Lair"] = "BlackrockMountain",
+	["Hellfire Peninsula"] = "HellfirePeninsula",
+	["Zangarmarsh"] = "Zangarmarsh",
+	["Terokkar Forest"] = "TerokkarForest",
+	["Nagrand"] = "Nagrand",
+	["Blade's Edge Mountains"] = "BladesEdgeMountains",
+	["Netherstorm"] = "Netherstorm",
+	["Shadowmoon Valley"] = "ShadowmoonValley",
+	["Shattrath City"] = "ShattrathCity",
+	["Eversong Woods"] = "EversongWoods",
+	["Ghostlands"] = "Ghostlands",
+	["Silvermoon City"] = "SilvermoonCity",
+	["Isle of Quel'Danas"] = "IsleOfQuelDanas",
+	["Azuremyst Isle"] = "AzuremystIsle",
+	["Bloodmyst Isle"] = "BloodmystIsle",
+	["The Exodar"] = "TheExodar",
+	["Hellfire Ramparts"] = "HellfirePeninsula",
+	["The Blood Furnace"] = "HellfirePeninsula",
+	["The Shattered Halls"] = "HellfirePeninsula",
+	["Magtheridon's Lair"] = "HellfirePeninsula",
+	["The Slave Pens"] = "Zangarmarsh",
+	["The Underbog"] = "Zangarmarsh",
+	["The Steamvault"] = "Zangarmarsh",
+	["Serpentshrine Cavern"] = "Zangarmarsh",
+	["Mana-Tombs"] = "TerokkarForest",
+	["Auchenai Crypts"] = "TerokkarForest",
+	["Sethekk Halls"] = "TerokkarForest",
+	["Shadow Labyrinth"] = "TerokkarForest",
+	["Gruul's Lair"] = "BladesEdgeMountains",
+	["The Mechanar"] = "Netherstorm",
+	["The Botanica"] = "Netherstorm",
+	["The Arcatraz"] = "Netherstorm",
+	["Tempest Keep"] = "Netherstorm",
+	["The Eye"] = "Netherstorm",
+	["Black Temple"] = "ShadowmoonValley",
+	["Magisters' Terrace"] = "IsleOfQuelDanas",
+	["Sunwell Plateau"] = "IsleOfQuelDanas",
+	["Zul'Aman"] = "Ghostlands",
+	["Karazhan"] = "DeadwindPass",
+}
+
+-- sub zones that have a picture of their own (checked before the zone)
+local SUBZONE_FILE = {
+	["Area 52"] = "Area52",
 }
 
 -- localized zone name -> English zone name (only needed where the name differs)
@@ -147,8 +191,13 @@ local function currentZone()
 end
 
 -- Returns the picture name for a zone (default: the zone the player is in), or nil.
+-- Without arguments a sub zone with a picture of its own (e.g. Area 52) wins over the zone.
 function S.GetLocationArt(zone)
-	zone = zone or currentZone()
+	if not zone then
+		local sub = GetSubZoneText and GetSubZoneText()
+		if sub and SUBZONE_FILE[sub] then return SUBZONE_FILE[sub] end
+		zone = currentZone()
+	end
 	if not zone or zone == "" then return nil end
 	local names = LOCALIZED[GetLocale()]
 	local english = (names and names[zone]) or zone
@@ -186,6 +235,7 @@ function UI.UpdateLocationBackground()
 		UI.bgArt:Hide()
 		UI.currentLocationArt = file
 		UI.CropLocationArt()
+		if UI.UpdateLocationTint then UI.UpdateLocationTint() end
 	else
 		art:Hide()
 		UI.bgArt:Show()

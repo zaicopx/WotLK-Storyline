@@ -137,12 +137,14 @@ local function canPlay(model, sequence)
 end
 
 -- Plays one animation, then goes back to standing.
-function UI.PlayAnimation(model, sequence)
+-- duration: optional (seconds). trusted: the caller has already checked that this model has the
+-- sequence (emotes, see effects.lua); otherwise only sequences listed for the model are played.
+function UI.PlayAnimation(model, sequence, duration, trusted)
 	if not S.db.modelAnimations or not model or not model:IsShown() then return end
-	if not canPlay(model, sequence) then return end
+	if not trusted and not canPlay(model, sequence) then return end
 	model.animToken = (model.animToken or 0) + 1
 	local token = model.animToken
-	local duration = getDuration(model.model, sequence)
+	duration = duration or getDuration(model.model, sequence)
 	playAnim(model, sequence, duration)
 	S.After(duration, function()
 		if model.animToken == token then playAnim(model, 0, 1) end
@@ -273,6 +275,13 @@ local LIGHT_YOU = { 1, 0, 0, 1, 1, 1, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 }
 -- camera: a number (index of a camera stored in the model) or nil = the free default camera.
 -- A model camera is attached to the model, so turning the model has no visible effect while one
 -- is active; with the free camera SetFacing / SetRotation really turn the character.
+-- Base position of a model plus the offset of the cinematic camera (effects.lua). Depth is the
+-- first value (positive = towards the camera).
+local function cinePosition(m)
+	local base, offset = m.basePos or { 0, 0, 0 }, m.cineOffset or 0
+	return { base[1] + offset, base[2], base[3] }
+end
+
 local function applyModel(m, facing, light, camera, position)
 	pcall(m.SetLight, m, unpack(light))
 	if camera then pcall(m.SetCamera, m, camera) end
@@ -314,12 +323,15 @@ local function refreshModels(final)
 
 	if me:IsShown() then
 		local camera = S.db.cameraMode == "auto" and 1 or (tonumber(S.db.cameraMode) or nil)
-		applyModel(me, angle * flip, LIGHT_ME, camera, { 0, 0, 0 })
+		me.cameraUsed = camera
+		me.basePos = { 0, 0, 0 }
+		applyModel(me, angle * flip, LIGHT_ME, camera, cinePosition(me))
 	end
 	if you:IsShown() then
 		you.cameraUsed = cameraFor(you.model)
 		local position = you.model and Storyline_C_POSITION and Storyline_C_POSITION[you.model]
-		applyModel(you, -angle * flip, LIGHT_YOU, you.cameraUsed, position or { 0, 0, 0 })
+		you.basePos = position or { 0, 0, 0 }
+		applyModel(you, -angle * flip, LIGHT_YOU, you.cameraUsed, cinePosition(you))
 		-- hidden until the model is known, so a wrong camera is never seen
 		if you.model or final then you:SetAlpha(1) end
 	end
@@ -330,6 +342,8 @@ UI.refreshModels = function() refreshModels(true) end
 function UI.SetupModels(unit)
 	local me, you = UI.me, UI.you
 	me.model, you.model, you.unit, you.cameraUsed = nil, nil, nil, nil
+	me.cameraUsed, me.basePos, you.basePos, me.cineOffset, you.cineOffset = nil, nil, nil, 0, 0
+	if UI.CineReset then UI.CineReset() end
 	for _, m in ipairs({ me, you }) do
 		m:SetScript("OnUpdate", nil)
 		m.animToken = (m.animToken or 0) + 1
@@ -617,7 +631,7 @@ end
 function UI.Show()
 	local f = UI.frame
 	S.CancelFade(f)
-	if UI.UpdateLocationBackground then UI.UpdateLocationBackground() end
+	if UI.UpdateLocationBackground then UI.UpdateLocationBackground() end   -- also applies the time tint
 	if not f:IsShown() then
 		f:SetAlpha(0)
 		f:Show()
@@ -910,6 +924,7 @@ function UI.Create()
 	UI.objNo:Hide()
 
 	UI.objContent = UI.CreateHoverFrame("Storyline_NPCFrameObjectivesContent", f, 325)
+	UI.HookCineFocus(UI.objContent)
 
 	---------------- rewards medallion ----------------
 	local rew = CreateFrame("Frame", "Storyline_NPCFrameRewards", f)
@@ -934,9 +949,11 @@ function UI.Create()
 	rew:Hide()
 
 	UI.rewContent = UI.CreateHoverFrame("Storyline_NPCFrameRewardsContent", f, 325)
+	UI.HookCineFocus(UI.rewContent)
 
 	---------------- gossip choices ----------------
 	UI.choices = UI.CreateHoverFrame("Storyline_NPCFrameGossipChoices", f, 260)
+	UI.HookCineFocus(UI.choices)
 	UI.choices:SetBackdrop({
 		bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
 		edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",

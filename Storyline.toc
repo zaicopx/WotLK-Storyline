@@ -4,7 +4,7 @@
 ## Notes: Immersive, Retail-style quest and gossip dialogs with 3D models (WotLK 3.3.5a rework of Total RP's Storyline).
 ## Notes-deDE: Immersive Quest- und Gespraechsfenster im Retail-Stil mit 3D-Modellen (WotLK 3.3.5a).
 ## Author: shadovvs (WotLK backport), Lanrutcon, Ellypse & Telkostrasz (original Storyline, Apache 2.0)
-## Version: 3.4.0
+## Version: 3.5.0
 ## SavedVariables: Storyline_Data
 ## OptionalDeps: Questie
 ## X-Website: https://github.com/shadovvs/WotLK-Storyline
@@ -17,6 +17,7 @@ frames.xml
 layout.lua
 locations.lua
 Artwork\Locations\Installed.lua
+effects.lua
 rewards.lua
 logic.lua
 compat.lua

@@ -1,4 +1,4 @@
-# Storyline for WotLK 3.3.5a — v3.4.0
+# Storyline for WotLK 3.3.5a — v3.5.0
 
 Retail-style quest and gossip dialogs for the **World of Warcraft 3.3.5a (Wrath of the Lich King)** client.
 Instead of the old stone quest window you get a parchment dialog with **your character on the left and the
@@ -7,7 +7,7 @@ quest objectives and rewards, like the Retail version of Storyline.
 
 This is a fork of [shadovvs/WotLK-Storyline](https://github.com/shadovvs/WotLK-Storyline), which is a
 backport of [Total-RP/Storyline](https://github.com/Total-RP/Storyline). The addon was rewritten in Lua and then
-improved in several rounds (3.0 → 3.4.0) after testing in the game. Everything that was changed, and why, is
+improved in several rounds (3.0 → 3.5.0) after testing in the game. Everything that was changed, and why, is
 described below.
 
 > Tested in-game on a 3.3.5a client together with [DragonUI](https://github.com/NeticSoul/DragonUI). If something
@@ -46,8 +46,12 @@ described below.
 - **Rewards medallion** where you click the reward you want.
 - **Gossip options and quests** in a small panel with the usual icons, a **rewind** button, and number keys.
 - **Resizable, movable and lockable** window, faction-tinted background (blue for Alliance, red for Horde).
+- **Cinematic mode**: the camera slowly zooms in on the model that is talking, and the focus moves to your character
+  when the dialog asks something of you. Can be switched off. See [Cinematic mode](#cinematic-mode).
+- **NPC emotes play animations**: `<Thrall bows.>` makes the NPC bow (also laugh, cry, salute, wave).
+- **Background tint by game time**: the location picture turns dark blue at night and warm at dawn and dusk.
 - **Dim the world** behind the window, with an adjustable strength (0–100 %).
-- **Location background**: a picture of the zone you are in is shown behind the models (vanilla zones for now,
+- **Location background**: a picture of the zone you are in is shown behind the models (vanilla and Burning Crusade zones,
   can be switched off). See [Location background](#location-background).
 - Per-model **scale data** from the original backport, so giants and tiny NPCs are framed sensibly.
 - **Keyboard**: `SPACE` continues, `1`–`9` pick a dialog option, `ESC` closes.
@@ -84,16 +88,48 @@ Type `/storyline test` for a preview without having to talk to an NPC.
 While a dialog is open, a picture of the zone you are standing in is drawn behind the two models, inside the
 parchment frame. The picture is cut (not stretched) to the shape of the window and follows window resizing.
 
-- **Vanilla zones for now** (36 pictures: Elwynn Forest, Westfall, Durotar, The Barrens, Stormwind City,
-  Ironforge, Undercity, Winterspring, Silithus… and instances / battlegrounds that belong to one of them, e.g.
-  Blackrock Depths and Alterac Valley). Every other zone (Orgrimmar, Darnassus, Thunder Bluff, Outland,
+- **Vanilla zones** (36 pictures: Elwynn Forest, Westfall, Durotar, The Barrens, Stormwind City, Ironforge,
+  Undercity, Winterspring, Silithus…) and **Burning Crusade zones** (16 pictures: Hellfire Peninsula, Zangarmarsh,
+  Terokkar Forest, Nagrand, Blade's Edge Mountains, Netherstorm, Area 52, Shadowmoon Valley, Shattrath City,
+  Eversong Woods, Ghostlands, Silvermoon City, Isle of Quel'Danas, Azuremyst Isle, Bloodmyst Isle, The Exodar).
+  Dungeons, raids and battlegrounds use the picture of the zone they belong to (e.g. Blackrock Depths, Alterac
+  Valley, Mana-Tombs, Black Temple, Sunwell Plateau). Every other zone (Orgrimmar, Darnassus, Thunder Bluff,
   Northrend…) keeps the normal faction-coloured background.
 - **On / off**: *Location background* in the options, or `/storyline bg`. It is on by default.
-- Zone names are matched in English, and in German and French (names from Babble-Zone 2.2). Other client languages
-  fall back to the English names; `/storyline zone` shows what is detected.
+- Zone names are matched in English. Vanilla zones are also matched in German and French (names from Babble-Zone
+  2.2); the Burning Crusade names are English only for now. Other client languages fall back to the English names;
+  `/storyline zone` shows what is detected.
 - The pictures live in `Artwork/Locations/` (512×256 BLP). If that folder (and `Artwork/Locations/Installed.lua`) is
   removed, the addon simply keeps the plain background — see [Credits and licence](#credits-and-licence) for why
   that matters.
+
+## Cinematic mode
+
+- While the NPC talks, the NPC model slowly comes closer and your character steps back a little; during a long
+  line the push-in continues slowly.
+- When the dialog asks something of you (the list of choices, the quest objectives or the rewards), the focus moves
+  to your character, and goes back to the NPC with the next line.
+- It only moves the two models with the same `SetPosition` call the dialog already uses to place them, no new API.
+  Models drawn with a model camera (creatures such as bears or treants) are left where they are.
+- **On / off**: *Cinematic mode* in the options or `/storyline cine`. `/storyline cine 30` makes the movement
+  smaller (default is 50), `/storyline cine flip` reverses the direction.
+
+## NPC emote animations
+
+Texts in angle brackets are NPC emotes. When one contains an English verb for bow, wave, laugh / chuckle / giggle,
+cry / weep / sob or salute, the NPC plays that animation, then goes back to standing.
+
+- A sequence the model does not have can crash the 3.3.5a client, so emotes are only played on the **player race
+  models** (human, orc, dwarf, night elf, undead, tauren, gnome, troll, blood elf, draenei; male and female). Other
+  NPCs (goblins, creatures, the "npc" model variants) just stand.
+- Switch it off with *NPC emotes play animations* or `/storyline emote`.
+
+## Background tint by game time
+
+The location picture is multiplied with a colour that follows the game time (`GetGameTime`): dark blue at night,
+warm orange around dawn (about 6:00) and dusk (about 18:30), untouched during the day. It is updated with every line
+of dialog. Switch it off with *Tint background by game time* or `/storyline tint`. It only affects the location
+picture, not the plain background.
 
 ## Options
 
@@ -120,6 +156,9 @@ Open them with `/storyline`, the gear icon in the window, or *Esc → Interface 
 - Flip model direction
 - Faction-coloured background
 - Location background
+- Tint background by game time
+- Cinematic mode
+- NPC emotes play animations
 - Dim the world behind the window
 - Mouse wheel resizes the NPC
 
@@ -133,6 +172,11 @@ Open them with `/storyline`, the gear icon in the window, or *Esc → Interface 
 | `/storyline test` | Preview the window without an NPC |
 | `/storyline close` | **Emergency close**: closes the window and the original dialog no matter what state they are in |
 | `/storyline bg` | Turn the location background on / off |
+| `/storyline tint` | Turn the tint of the location picture by game time on / off |
+| `/storyline cine` | Turn the cinematic mode on / off |
+| `/storyline cine <0-100>` | How far the cinematic camera moves (`0` = off) |
+| `/storyline cine flip` | Reverse the zoom direction (if the camera moves the wrong way) |
+| `/storyline emote` | Turn NPC emote animations on / off |
 | `/storyline zone` | Print the zone the addon sees and which picture it picked (for bug reports) |
 | `/storyline dim <0-100>` | Strength of the world dimming (`0` = off) |
 | `/storyline wheel` | Turn "mouse wheel resizes the NPC" on / off |
@@ -164,6 +208,9 @@ Open them with `/storyline`, the gear icon in the window, or *Esc → Interface 
 |---|---|
 | The window is stuck / will not close | Click `X`, press `ESC`, or type `/storyline close` |
 | The two models face away from each other | `/storyline flip` |
+| The cinematic camera moves the wrong way (the NPC gets smaller instead of bigger) | `/storyline cine flip` |
+| The cinematic movement is too strong / too weak | `/storyline cine 30` / `/storyline cine 80` (default 50), or turn it off with `/storyline cine` |
+| An NPC emote does not play an animation | Only player race models have these animations (see above) and only the English verbs bow, wave, laugh, cry and salute are recognised |
 | No picture in a vanilla zone | `/storyline zone` prints the zone name the game returns and the picture chosen. Send that line in an issue. Other client languages than English / German / French fall back to English zone names |
 | A giant NPC is far too big or too small | Turn on *Mouse wheel resizes the NPC* (or `/storyline wheel`) and scroll over the models. `/storyline scale reset` undoes it |
 | The models were resized by accident | `/storyline scale reset` |
@@ -262,6 +309,23 @@ This is the history from the first rewrite to the current release. The full list
   normal background.
 - New command `/storyline zone` (prints the detected zone and picture).
 
+### 3.5.0 — cinematic mode, emote animations, tint by game time
+
+- **Cinematic mode**: slow zoom on the model that is talking, focus moves to your character when you have to answer
+  (choices, objectives, rewards). Toggle, strength (`/storyline cine <0-100>`) and direction (`cine flip`).
+- **NPC emotes play animations** (bow, wave, laugh, cry, salute) on player race models; every other model just
+  stands, because an unknown sequence can crash the client. Toggle in the options.
+- **Background tint by game time** for the location pictures: dark blue at night, warm at dawn and dusk. Toggle in
+  the options.
+- Three new options, three new commands (`cine`, `emote`, `tint`), new file `effects.lua`.
+
+### 3.4.1 — Burning Crusade pictures
+
+- 16 location pictures for The Burning Crusade (Outland, Quel'Thalas, Azuremyst / Bloodmyst), including a picture
+  for the sub zone **Area 52**.
+- Outland dungeons and raids use the picture of their zone; Karazhan uses Deadwind Pass.
+- Texture file names contain no spaces or apostrophes (`BladesEdgeMountains.blp`, `IsleOfQuelDanas.blp`…).
+
 ## Problems fixed (summary table)
 
 | Problem | Cause | Fix | Version |
@@ -285,6 +349,9 @@ Things that were learnt the hard way while making this work on the 3.3.5a client
 
 - **`Button:IsEnabled()` returns `1` or `0`, not a boolean.** `if button:IsEnabled() then` is always true. Use
   `S.IsOn(button)` (in `utils.lua`) or compare against `0`. A disabled button also ignores `:Click()`.
+- **`Model:SetPosition(depth, x, y)`**: the first value is the depth along the line of sight; positive moves the model
+  towards the camera (the same call and axis order as `Storyline_C_POSITION`). The cinematic camera only changes this
+  value. If a client treats it the other way round, `/storyline cine flip` fixes it.
 - **There is no `C_Timer`**; timers and fades are built on `OnUpdate` (`core.lua`).
 - **There is no `SetAnimation()` on models**; a sequence is played by feeding `SetSequenceTime` every frame.
   Calling it with a sequence the model does not have can crash the client, so only sequences listed for that
@@ -314,6 +381,7 @@ Things that were learnt the hard way while making this work on the 3.3.5a client
 | `frames.xml` | Parchment artwork (tiled textures) |
 | `layout.lua` | Window, models, chat bubble, medallions, dim layer, control buttons |
 | `locations.lua` | Location background: zone name → picture, cropping to the window, English / German / French names |
+| `effects.lua` | Cinematic camera, NPC emote animations, tint of the location picture by game time |
 | `rewards.lua` | Reward grid, tooltips, auto-equip |
 | `logic.lua` | Dialog flow, quest actions, closing logic |
 | `compat.lua` | Original Blizzard frames, accepting / turning in quests, Questie |
@@ -325,8 +393,8 @@ Things that were learnt the hard way while making this work on the 3.3.5a client
 
 ## Not included
 
-- Location pictures for non-vanilla zones (Outland, Northrend, the other capital cities) — planned. Until then those
-  zones use the faction-tinted background.
+- Location pictures for Northrend and for the remaining capital cities (Orgrimmar, Darnassus, Thunder Bluff,
+  Dalaran…) — planned. Until then those zones use the faction-tinted background.
 - The friendship / reputation bar of Retail (it relies on Retail-only game data).
 - Blacklist button, dyslexia font, custom text fonts.
 
@@ -340,8 +408,10 @@ Things that were learnt the hard way while making this work on the 3.3.5a client
   third-party artists; the list of original sources is in `Artwork/Locations/Sources.txt`. **That project does not
   state a licence for the pictures, so their redistribution rights are unclear.** If you publish or fork this
   repository, either get permission from the artists, replace the pictures with your own, or leave the
-  `Artwork/Locations/` folder out (delete it together with the `Artwork\Locations\Installed.lua` line in
-  `Storyline.toc`; the addon then works without the location background).
+  `Artwork/Locations/` folder out. The 16 Burning Crusade pictures were added from a pack supplied by the
+  maintainer; their original source is not recorded, so the same applies to them. To ship without the pictures,
+  delete the `Artwork/Locations/` folder together with the `Artwork\Locations\Installed.lua` line in
+  `Storyline.toc`; the addon then works without the location background.
 
 The source files of the original carry the Apache License, Version 2.0
 (<http://www.apache.org/licenses/LICENSE-2.0>). This version reuses the artwork (`Artwork/`), the animation /

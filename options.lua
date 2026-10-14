@@ -32,6 +32,11 @@ local CHECKS = {
 	  onChange = function() S.UI.RefreshBackground() end },
 	{ key = "locationBackground", label = "SL_CONFIG_LOCATION", tip = "SL_CONFIG_LOCATION_TT",
 	  onChange = function() S.UI.UpdateLocationBackground() end },
+	{ key = "timeTint", label = "SL_CONFIG_TIMETINT", tip = "SL_CONFIG_TIMETINT_TT",
+	  onChange = function() S.UI.UpdateLocationTint() end },
+	{ key = "cinematicMode", label = "SL_CONFIG_CINE", tip = "SL_CONFIG_CINE_TT",
+	  onChange = function() S.ApplyCinematic() end },
+	{ key = "emoteAnimations", label = "SL_CONFIG_EMOTE", tip = "SL_CONFIG_EMOTE_TT" },
 	{ key = "dimWorld", label = "SL_CONFIG_DIM", tip = "SL_CONFIG_DIM_TT",
 	  onChange = function()
 		if S.db.dimWorld and (S.db.dimAmount or 0) <= 0 then S.db.dimAmount = 0.5; O.Refresh() end
@@ -234,6 +239,34 @@ SlashCmdList["STORYLINE"] = function(msg)
 		S.db.flipFacing = not S.db.flipFacing
 		S.UI.RefreshModelTransforms()
 		S.Print("flipFacing = " .. tostring(S.db.flipFacing))
+	elseif msg:find("^cine") then
+		-- /storyline cine            on / off
+		-- /storyline cine <0-100>    how far the camera moves (0 = off)
+		-- /storyline cine flip       reverse the zoom direction (if it moves the wrong way)
+		local arg = msg:match("^cine%s+(%S+)")
+		if arg == "flip" then
+			S.db.cinematicSign = (S.db.cinematicSign == -1) and 1 or -1
+			S.db.cinematicMode = true
+		elseif tonumber(arg) then
+			S.db.cinematicStrength = math.max(0, math.min(1, tonumber(arg) / 100))
+			S.db.cinematicMode = S.db.cinematicStrength > 0
+		else
+			S.db.cinematicMode = not S.db.cinematicMode
+		end
+		S.ApplyCinematic()
+		if O.Refresh then O.Refresh() end
+		S.Print("cinematic mode: " .. (S.db.cinematicMode and "on" or "off") .. " | strength "
+			.. floor((S.db.cinematicStrength or 0) * 100 + 0.5) .. "% | direction "
+			.. (S.db.cinematicSign == -1 and "reversed" or "normal") .. "  (usage: /storyline cine, cine 0-100, cine flip)")
+	elseif msg == "emote" then
+		S.db.emoteAnimations = not S.db.emoteAnimations
+		if O.Refresh then O.Refresh() end
+		S.Print("NPC emote animations: " .. (S.db.emoteAnimations and "on" or "off"))
+	elseif msg == "tint" then
+		S.db.timeTint = not S.db.timeTint
+		S.UI.UpdateLocationTint()
+		if O.Refresh then O.Refresh() end
+		S.Print("background tint by game time: " .. (S.db.timeTint and "on" or "off"))
 	elseif msg == "bg" then
 		-- /storyline bg : location background on / off
 		S.db.locationBackground = not S.db.locationBackground

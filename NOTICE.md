@@ -19,3 +19,9 @@ Before publishing or redistributing this addon, get permission, replace the pict
 `Artwork/Locations/` together with the `Artwork\Locations\Installed.lua` line in `Storyline.toc` (the addon works
 without it, with the plain background). `locations.lua` (zone matching) is original code; the German / French zone
 name translations come from Babble-Zone 2.2 via VanillaStoryline.
+
+The 16 Burning Crusade pictures (added in 3.4.1; Area 52, Azuremyst Isle, Blade's Edge Mountains, Bloodmyst Isle,
+Eversong Woods, Ghostlands, Hellfire Peninsula, Isle of Quel'Danas, Nagrand, Netherstorm, Shadowmoon Valley,
+Shattrath City, Silvermoon City, Terokkar Forest, The Exodar, Zangarmarsh) come from a pack supplied by the
+maintainer. They look like game screenshots; their original source and licence are not recorded. The same
+advice applies: verify the rights before redistributing, or remove `Artwork/Locations/`.
