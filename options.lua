@@ -67,6 +67,16 @@ local SLIDERS = {
 		S.UI.UpdateDim()
 		if not S.UI.frame:IsShown() then S.UI.PreviewDim() end
 	  end },
+	{ key = "cinematicStrength", min = 0, max = 1, step = 0.05, low = "0%", high = "100%",
+	  text = function(v) return string.format(L.SL_CONFIG_CINEZOOM, floor(v * 100 + 0.5)) end,
+	  onChange = function()
+		-- moving the slider means "I want the cinematic zoom": switch the mode on
+		if not S.db.cinematicMode and (S.db.cinematicStrength or 0) > 0 then
+			S.db.cinematicMode = true
+			O.Refresh()
+		end
+		S.ApplyCinematic()
+	  end },
 }
 
 local function Tooltip(frame, text)
@@ -104,7 +114,7 @@ function O.Create()
 	about:SetText(L.SL_CONFIG_ABOUT)
 
 	-- Sliders: two in the left column, one in the right column
-	local slots = { { 28, -100 }, { 28, -160 }, { 318, -100 }, { 318, -160 } }
+	local slots = { { 28, -100 }, { 28, -160 }, { 318, -100 }, { 318, -160 }, { 28, -220 } }
 	for i, def in ipairs(SLIDERS) do
 		local name = "StorylineOptionSlider_" .. def.key
 		local slider = CreateFrame("Slider", name, panel, "OptionsSliderTemplate")
@@ -132,7 +142,7 @@ function O.Create()
 		local cb = CreateFrame("CheckButton", name, panel, "InterfaceOptionsCheckButtonTemplate")
 		local column = i <= perColumn and 0 or 1
 		local row = (i - 1) % perColumn
-		cb:SetPoint("TOPLEFT", panel, "TOPLEFT", 16 + column * 290, -208 - row * 26)
+		cb:SetPoint("TOPLEFT", panel, "TOPLEFT", 16 + column * 290, -276 - row * 26)
 		_G[name .. "Text"]:SetText(L[def.label])
 		_G[name .. "Text"]:SetWidth(240)
 		_G[name .. "Text"]:SetJustifyH("LEFT")
@@ -146,7 +156,7 @@ function O.Create()
 	end
 
 	-- Buttons
-	local y = -208 - perColumn * 26 - 14
+	local y = -276 - perColumn * 26 - 14
 	local preview = CreateFrame("Button", "StorylineOptionPreview", panel, "UIPanelButtonTemplate")
 	preview:SetWidth(140)
 	preview:SetHeight(24)

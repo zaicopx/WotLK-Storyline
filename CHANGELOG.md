@@ -1,5 +1,12 @@
 # Changelog
 
+## 3.5.1
+- Fix: the cinematic zoom of 3.5.0 was far too strong: a human NPC filled the window and its head was cut off.
+  The zoom distances are about 2.5 times smaller now and the default strength is 40 %.
+- New: **Cinematic zoom** slider (0-100 %) in the options panel. Moving it switches the cinematic mode on and
+  updates a dialog that is open. Same value as `/storyline cine <0-100>`.
+- A strength of 50 % that 3.5.0 had saved (its default) is reset to the new default of 40 %.
+
 ## 3.5.0
 - New: **cinematic mode**. The camera slowly zooms in on the model that is talking (the other one steps back a
   little); when the dialog asks something of you (choices, objectives, rewards) the focus moves to your character

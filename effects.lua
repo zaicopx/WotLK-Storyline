@@ -13,12 +13,15 @@ local max, min, abs, exp, floor = math.max, math.min, math.abs, math.exp, math.f
 ------------------------------------------------------------------------
 -- 1. Cinematic camera
 ------------------------------------------------------------------------
--- Depth units at 100 % strength (the default strength is 50 %). Depth is the first value of
+-- Depth units at 100 % strength (the default is 40 %). Depth is the first value of
 -- Model:SetPosition (positive = towards the camera). No new API: the models are moved with
 -- SetPosition from an OnUpdate, the same call the dialog already uses to place them.
-local ZOOM_IN = 1.2      -- the model that is talking comes closer
-local ZOOM_OUT = -0.5    -- the other model steps back a little
-local DRIFT = 0.5        -- extra slow push-in while the focus stays on the same model
+-- In 3.5.0 these were 1.2 / -0.5 / 0.5 and a human NPC filled the whole window (head cut off), so one
+-- unit of depth is a lot: a model is about 1.5 units from the camera, and the zoom factor is
+-- roughly 1 / (1 - depth / 1.5).
+local ZOOM_IN = 0.45     -- the model that is talking comes closer
+local ZOOM_OUT = -0.20   -- the other model steps back a little
+local DRIFT = 0.15       -- extra slow push-in while the focus stays on the same model
 local DRIFT_TIME = 9     -- seconds the push-in takes
 local SMOOTH = 2.2       -- higher = faster easing between positions (2.2: about 1.5 s to settle)
 

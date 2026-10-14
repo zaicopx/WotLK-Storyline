@@ -5,7 +5,7 @@
 local S = _G.Storyline or {}
 _G.Storyline = S
 
-S.VERSION = "3.5.0"
+S.VERSION = "3.5.1"
 
 local tinsert, tremove = table.insert, table.remove
 local GetTime = GetTime
@@ -37,7 +37,7 @@ local DEFAULTS = {
 	locationBackground = true, -- picture of the zone behind the models
 	timeTint = true,           -- the location picture follows the game time (dark blue at night, warm at dawn / dusk)
 	cinematicMode = true,      -- slow zoom on the model that is "talking", focus moves to you when you have to answer
-	cinematicStrength = 0.5,   -- 0..1, how far the cinematic camera moves
+	cinematicStrength = 0.4,   -- 0..1, how far the cinematic camera moves (slider "Cinematic zoom")
 	cinematicSign = 1,         -- 1 or -1: direction of the zoom (flip with /storyline cine flip if it moves the wrong way)
 	emoteAnimations = true,    -- "<Name bows.>" plays the bow / laugh / cry / salute / wave animation
 	width = 700,
@@ -67,6 +67,11 @@ function S.InitDB()
 	if (d.config.layoutVersion or 0) < 3 then
 		d.config.scrollScale = false
 		d.config.layoutVersion = 3
+	end
+	-- 3.5.1: the cinematic zoom is much smaller now; the old default (50 %) becomes the new default (40 %)
+	if (d.config.layoutVersion or 0) < 4 then
+		if d.config.cinematicStrength == 0.5 then d.config.cinematicStrength = nil end
+		d.config.layoutVersion = 4
 	end
 	mergeDefaults(d.config, DEFAULTS)
 	local dim = tonumber(d.config.dimAmount) or DEFAULTS.dimAmount

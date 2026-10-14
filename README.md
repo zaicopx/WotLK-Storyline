@@ -1,4 +1,4 @@
-# Storyline for WotLK 3.3.5a — v3.5.0
+# Storyline for WotLK 3.3.5a — v3.5.1
 
 Retail-style quest and gossip dialogs for the **World of Warcraft 3.3.5a (Wrath of the Lich King)** client.
 Instead of the old stone quest window you get a parchment dialog with **your character on the left and the
@@ -7,7 +7,7 @@ quest objectives and rewards, like the Retail version of Storyline.
 
 This is a fork of [shadovvs/WotLK-Storyline](https://github.com/shadovvs/WotLK-Storyline), which is a
 backport of [Total-RP/Storyline](https://github.com/Total-RP/Storyline). The addon was rewritten in Lua and then
-improved in several rounds (3.0 → 3.5.0) after testing in the game. Everything that was changed, and why, is
+improved in several rounds (3.0 → 3.5.1) after testing in the game. Everything that was changed, and why, is
 described below.
 
 > Tested in-game on a 3.3.5a client together with [DragonUI](https://github.com/NeticSoul/DragonUI). If something
@@ -111,8 +111,11 @@ parchment frame. The picture is cut (not stretched) to the shape of the window a
   to your character, and goes back to the NPC with the next line.
 - It only moves the two models with the same `SetPosition` call the dialog already uses to place them, no new API.
   Models drawn with a model camera (creatures such as bears or treants) are left where they are.
-- **On / off**: *Cinematic mode* in the options or `/storyline cine`. `/storyline cine 30` makes the movement
-  smaller (default is 50), `/storyline cine flip` reverses the direction.
+- **On / off**: *Cinematic mode* in the options or `/storyline cine`.
+- **How far it zooms**: the *Cinematic zoom* slider in the options (0–100 %, default 40 %), or
+  `/storyline cine <0-100>`. The default is a gentle zoom; at 100 % a human NPC fills most of the window and the
+  head can be cut off. Moving the slider switches the mode on and updates a dialog that is open.
+- `/storyline cine flip` reverses the direction.
 
 ## NPC emote animations
 
@@ -142,6 +145,10 @@ Open them with `/storyline`, the gear icon in the window, or *Esc → Interface 
 - **Model angle** — how far the two models turn towards each other.
 - **Dim strength** — how dark the 3D world gets behind the window (0–100 %). Moving the slider switches dimming
   on, shows a short preview when no dialog is open, and updates live while a dialog is open.
+
+**Sliders** (continued)
+
+- **Cinematic zoom** — how far the cinematic camera moves (0–100 %). See [Cinematic mode](#cinematic-mode).
 
 **Check boxes**
 
@@ -174,7 +181,7 @@ Open them with `/storyline`, the gear icon in the window, or *Esc → Interface 
 | `/storyline bg` | Turn the location background on / off |
 | `/storyline tint` | Turn the tint of the location picture by game time on / off |
 | `/storyline cine` | Turn the cinematic mode on / off |
-| `/storyline cine <0-100>` | How far the cinematic camera moves (`0` = off) |
+| `/storyline cine <0-100>` | How far the cinematic camera moves (same as the *Cinematic zoom* slider, `0` = no zoom) |
 | `/storyline cine flip` | Reverse the zoom direction (if the camera moves the wrong way) |
 | `/storyline emote` | Turn NPC emote animations on / off |
 | `/storyline zone` | Print the zone the addon sees and which picture it picked (for bug reports) |
@@ -209,7 +216,7 @@ Open them with `/storyline`, the gear icon in the window, or *Esc → Interface 
 | The window is stuck / will not close | Click `X`, press `ESC`, or type `/storyline close` |
 | The two models face away from each other | `/storyline flip` |
 | The cinematic camera moves the wrong way (the NPC gets smaller instead of bigger) | `/storyline cine flip` |
-| The cinematic movement is too strong / too weak | `/storyline cine 30` / `/storyline cine 80` (default 50), or turn it off with `/storyline cine` |
+| The cinematic zoom is too strong / too weak | The *Cinematic zoom* slider (default 40 %), or `/storyline cine 20` / `/storyline cine 70`; turn it off with `/storyline cine` |
 | An NPC emote does not play an animation | Only player race models have these animations (see above) and only the English verbs bow, wave, laugh, cry and salute are recognised |
 | No picture in a vanilla zone | `/storyline zone` prints the zone name the game returns and the picture chosen. Send that line in an issue. Other client languages than English / German / French fall back to English zone names |
 | A giant NPC is far too big or too small | Turn on *Mouse wheel resizes the NPC* (or `/storyline wheel`) and scroll over the models. `/storyline scale reset` undoes it |
@@ -309,10 +316,18 @@ This is the history from the first rewrite to the current release. The full list
   normal background.
 - New command `/storyline zone` (prints the detected zone and picture).
 
+### 3.5.1 — gentler cinematic zoom, zoom slider
+
+- The cinematic zoom of 3.5.0 was far too strong (a human NPC filled the window and the head was cut off). The zoom
+  distances are now about 2.5 times smaller, and the default strength is 40 %.
+- New **Cinematic zoom** slider (0–100 %) in the options; moving it switches the mode on and updates an open
+  dialog live. `/storyline cine <0-100>` sets the same value.
+- A strength of 50 % saved by 3.5.0 is reset to the new default.
+
 ### 3.5.0 — cinematic mode, emote animations, tint by game time
 
 - **Cinematic mode**: slow zoom on the model that is talking, focus moves to your character when you have to answer
-  (choices, objectives, rewards). Toggle, strength (`/storyline cine <0-100>`) and direction (`cine flip`).
+  (choices, objectives, rewards). Toggle, strength (`/storyline cine <0-100>`, slider added in 3.5.1) and direction (`cine flip`).
 - **NPC emotes play animations** (bow, wave, laugh, cry, salute) on player race models; every other model just
   stands, because an unknown sequence can crash the client. Toggle in the options.
 - **Background tint by game time** for the location pictures: dark blue at night, warm at dawn and dusk. Toggle in
