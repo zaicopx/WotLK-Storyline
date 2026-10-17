@@ -1,4 +1,4 @@
-# Storyline for WotLK 3.3.5a — v3.5.1
+# Storyline for WotLK 3.3.5a — v3.6.1
 
 Retail-style quest and gossip dialogs for the **World of Warcraft 3.3.5a (Wrath of the Lich King)** client.
 Instead of the old stone quest window you get a parchment dialog with **your character on the left and the
@@ -7,7 +7,7 @@ quest objectives and rewards, like the Retail version of Storyline.
 
 This is a fork of [shadovvs/WotLK-Storyline](https://github.com/shadovvs/WotLK-Storyline), which is a
 backport of [Total-RP/Storyline](https://github.com/Total-RP/Storyline). The addon was rewritten in Lua and then
-improved in several rounds (3.0 → 3.5.1) after testing in the game. Everything that was changed, and why, is
+improved in several rounds (3.0 → 3.6.1) after testing in the game. Everything that was changed, and why, is
 described below.
 
 > Tested in-game on a 3.3.5a client together with [DragonUI](https://github.com/NeticSoul/DragonUI). If something
@@ -50,6 +50,8 @@ described below.
   when the dialog asks something of you. Can be switched off. See [Cinematic mode](#cinematic-mode).
 - **NPC emotes play animations**: `<Thrall bows.>` makes the NPC bow (also laugh, cry, salute, wave).
 - **Background tint by game time**: the location picture turns dark blue at night and warm at dawn and dusk.
+- **VoiceOver compatibility**: the text can be typed at the pace of the voice, and the next paragraph waits until
+  the voice has finished the current one. See [VoiceOver](#voiceover).
 - **Dim the world** behind the window, with an adjustable strength (0–100 %).
 - **Location background**: a picture of the zone you are in is shown behind the models (vanilla and Burning Crusade zones,
   can be switched off). See [Location background](#location-background).
@@ -134,6 +136,43 @@ warm orange around dawn (about 6:00) and dusk (about 18:30), untouched during th
 of dialog. Switch it off with *Tint background by game time* or `/storyline tint`. It only affects the location
 picture, not the plain background.
 
+## VoiceOver
+
+Works with [VoiceOver](https://github.com/mrthinger/wow-voiceover) (`AI_VoiceOver`, the voice-over addon for 3.3.5
+private servers) when it is installed and has a voice for the dialog. Nothing in VoiceOver is changed: Storyline
+finds its single global `VoiceOver` and hooks its sound queue.
+
+VoiceOver plays **one sound file for the whole quest or gossip text** and knows how long it is. Storyline splits the
+text into paragraphs, so the borders between the paragraphs inside the sound are **estimated from the number of
+characters** (an emote like `<The goblin nods.>` is not spoken and takes no time). With that:
+
+- **Text follows the voice** — the typing of a paragraph is driven by the audio clock instead of the normal typing
+  speed, so the text appears at the pace of the voice.
+- **Wait for the voice** — the next paragraph, and the action after the last one (check objectives, get reward…),
+  is locked until the voice has reached the end of the current paragraph. While it is locked, the line at the bottom
+  of the text says *Voice is speaking... (SHIFT + click: skip)*. **SHIFT + click** stops the voice and goes on.
+
+- **Continue automatically** — when the voice has finished a paragraph, the next one starts by itself after a short
+  pause (a paragraph stays on screen for at least about a second and a half, so the pace stays readable). You can
+  listen to a whole dialog without clicking. After the last paragraph the objectives of an offered quest, or the
+  choices of a gossip, are shown too. **Handing in a quest (the "complete" dialog) always needs a click**, and
+  accepting a quest is always your own click on the green check mark.
+
+Each of the three can be switched off separately in the options (or `/storyline voice text`, `/storyline voice wait`,
+`/storyline voice auto`).
+
+Good to know:
+
+- Without VoiceOver, without a voice for this text, while VoiceOver's queue is paused, and after you went ahead of
+  the voice (right-click *rewind*, SHIFT + click), everything works as before.
+- When a new dialog opens while the voice of the previous one is still speaking, that older voice is cut, so the voice
+  of the dialog on screen starts at once.
+- On 3.3.5 VoiceOver plays on the music channel and fades the music out first; Storyline waits for that fade
+  (the text starts when the voice starts).
+- The quest *progress* text ("Have you finished…?") has no voice in VoiceOver, so it is never locked.
+- Because the paragraph borders are estimated, the text can be a little ahead of or behind the exact word.
+  The audio length itself is exact.
+
 ## Options
 
 Open them with `/storyline`, the gear icon in the window, or *Esc → Interface → AddOns → Storyline*.
@@ -166,6 +205,9 @@ Open them with `/storyline`, the gear icon in the window, or *Esc → Interface 
 - Tint background by game time
 - Cinematic mode
 - NPC emotes play animations
+- VoiceOver: text follows the voice
+- VoiceOver: wait for the voice
+- VoiceOver: continue automatically
 - Dim the world behind the window
 - Mouse wheel resizes the NPC
 
@@ -184,6 +226,10 @@ Open them with `/storyline`, the gear icon in the window, or *Esc → Interface 
 | `/storyline cine <0-100>` | How far the cinematic camera moves (same as the *Cinematic zoom* slider, `0` = no zoom) |
 | `/storyline cine flip` | Reverse the zoom direction (if the camera moves the wrong way) |
 | `/storyline emote` | Turn NPC emote animations on / off |
+| `/storyline voice` | Show the VoiceOver status (found, queue, is this dialog voiced) |
+| `/storyline voice text` | VoiceOver: text follows the voice on / off |
+| `/storyline voice wait` | VoiceOver: wait for the voice on / off |
+| `/storyline voice auto` | VoiceOver: continue automatically on / off |
 | `/storyline zone` | Print the zone the addon sees and which picture it picked (for bug reports) |
 | `/storyline dim <0-100>` | Strength of the world dimming (`0` = off) |
 | `/storyline wheel` | Turn "mouse wheel resizes the NPC" on / off |
@@ -200,6 +246,7 @@ Open them with `/storyline`, the gear icon in the window, or *Esc → Interface 
 
 ## Compatibility
 
+- **VoiceOver** (`AI_VoiceOver`) — see [VoiceOver](#voiceover). The sound queue is hooked, nothing is replaced.
 - **DragonUI** — tested together with DragonUI. DragonUI restyles the original quest and gossip windows; Storyline
   keeps those windows open but invisible, so nothing is lost. The "quest not accepted" bug that showed up while
   testing with it was a mistake in Storyline's own code and is fixed in 3.3.1 (see below).
@@ -316,6 +363,21 @@ This is the history from the first rewrite to the current release. The full list
   normal background.
 - New command `/storyline zone` (prints the detected zone and picture).
 
+### 3.6.1 — VoiceOver: continue automatically
+
+- New option **VoiceOver: continue automatically** (on by default, `/storyline voice auto`): the next paragraph starts
+  by itself when the voice has finished the current one. After the last paragraph the objectives (offered quest) or
+  the choices (gossip) are shown as well. A quest being completed is never handed in automatically.
+
+### 3.6.0 — VoiceOver compatibility
+
+- **VoiceOver**: text typed at the pace of the voice, and the next paragraph (and the final action) waits until
+  the voice has finished the current paragraph. SHIFT + click skips the voice. Paragraph borders inside the sound
+  are estimated by character count; the audio length is exact.
+- Two new options (both on by default), `/storyline voice`, `/storyline voice text`, `/storyline voice wait`.
+- New file `voice.lua`; `## OptionalDeps: Questie, AI_VoiceOver` so VoiceOver loads first.
+- A voice of an older dialog that is still speaking is cut when a new dialog opens.
+
 ### 3.5.1 — gentler cinematic zoom, zoom slider
 
 - The cinematic zoom of 3.5.0 was far too strong (a human NPC filled the window and the head was cut off). The zoom
@@ -367,6 +429,10 @@ Things that were learnt the hard way while making this work on the 3.3.5a client
 - **`Model:SetPosition(depth, x, y)`**: the first value is the depth along the line of sight; positive moves the model
   towards the camera (the same call and axis order as `Storyline_C_POSITION`). The cinematic camera only changes this
   value. If a client treats it the other way round, `/storyline cine flip` fixes it.
+- **VoiceOver's API**: `VoiceOver.SoundQueue` (`sounds`, `AddSoundToQueue`, `PlaySound`, `RemoveSoundFromQueue`,
+  `PauseQueue`), each `SoundData` has `text`, `length` (seconds), `delay` (music fade-out on 3.3.5) and
+  `nextSoundTimer` while it plays. The sound of a dialog is found by comparing `SoundData.text` with the text the
+  dialog was opened with.
 - **There is no `C_Timer`**; timers and fades are built on `OnUpdate` (`core.lua`).
 - **There is no `SetAnimation()` on models**; a sequence is played by feeding `SetSequenceTime` every frame.
   Calling it with a sequence the model does not have can crash the client, so only sequences listed for that
@@ -397,6 +463,7 @@ Things that were learnt the hard way while making this work on the 3.3.5a client
 | `layout.lua` | Window, models, chat bubble, medallions, dim layer, control buttons |
 | `locations.lua` | Location background: zone name → picture, cropping to the window, English / German / French names |
 | `effects.lua` | Cinematic camera, NPC emote animations, tint of the location picture by game time |
+| `voice.lua` | VoiceOver compatibility: finds the voice of the dialog, estimates the paragraph borders, text follows the voice, waiting for the voice |
 | `rewards.lua` | Reward grid, tooltips, auto-equip |
 | `logic.lua` | Dialog flow, quest actions, closing logic |
 | `compat.lua` | Original Blizzard frames, accepting / turning in quests, Questie |

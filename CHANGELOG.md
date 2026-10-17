@@ -1,5 +1,25 @@
 # Changelog
 
+## 3.6.1
+- New: **VoiceOver: continue automatically** (option, on by default; `/storyline voice auto`). When the voice has
+  finished a paragraph, the next one starts by itself after a short pause, so a dialog can be listened to without
+  clicking. A paragraph stays on screen for at least 1.2 s + 0.02 s per character, which keeps a sane pace if the voice
+  ended early. After the last paragraph the objectives of an offered quest or the choices of a gossip are shown too.
+  A quest that is being completed is never handed in automatically; accepting a quest is always your own click.
+
+## 3.6.0
+- New: **VoiceOver compatibility** (`AI_VoiceOver`). VoiceOver plays one sound file for the whole text and knows its
+  length; Storyline estimates the paragraph borders inside the sound from the number of characters (emotes are not
+  spoken).
+  - "VoiceOver: text follows the voice": the text is typed at the pace of the voice (driven by the audio clock).
+  - "VoiceOver: wait for the voice": the next paragraph and the action after the last one are locked until the
+    voice has finished the current paragraph; the next line says "Voice is speaking...". SHIFT + click skips the voice.
+  - Nothing is followed or locked without VoiceOver, without a voice for the dialog, while VoiceOver is paused,
+    after a rewind or after skipping.
+  - A voice of an older dialog that is still speaking is cut when a new dialog opens.
+- Two new options (on by default), `/storyline voice`, `/storyline voice text`, `/storyline voice wait`.
+- New file `voice.lua`; `OptionalDeps: AI_VoiceOver`. The options panel has smaller row spacing to fit the new rows.
+
 ## 3.5.1
 - Fix: the cinematic zoom of 3.5.0 was far too strong: a human NPC filled the window and its head was cut off.
   The zoom distances are about 2.5 times smaller now and the default strength is 40 %.

@@ -5,7 +5,7 @@
 local S = _G.Storyline or {}
 _G.Storyline = S
 
-S.VERSION = "3.5.1"
+S.VERSION = "3.6.1"
 
 local tinsert, tremove = table.insert, table.remove
 local GetTime = GetTime
@@ -40,6 +40,9 @@ local DEFAULTS = {
 	cinematicStrength = 0.4,   -- 0..1, how far the cinematic camera moves (slider "Cinematic zoom")
 	cinematicSign = 1,         -- 1 or -1: direction of the zoom (flip with /storyline cine flip if it moves the wrong way)
 	emoteAnimations = true,    -- "<Name bows.>" plays the bow / laugh / cry / salute / wave animation
+	voiceSyncText = true,      -- VoiceOver: the text is typed at the pace of the voice
+	voiceWait = true,          -- VoiceOver: the next paragraph waits until the voice has finished the current one
+	voiceAuto = true,          -- VoiceOver: the next paragraph starts by itself when the voice has finished the current one
 	width = 700,
 	height = 450,
 }

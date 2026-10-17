@@ -27,6 +27,7 @@ function handlers.ADDON_LOADED(name)
 	S.UI.Create()
 	S.InitLogic()
 	S.Options.Create()
+	if S.Voice then S.Voice.Init() end   -- VoiceOver (loads before this addon: A < S)
 
 	frame:RegisterEvent("GOSSIP_SHOW")
 	frame:RegisterEvent("GOSSIP_CLOSED")

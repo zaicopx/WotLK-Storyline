@@ -37,6 +37,9 @@ local CHECKS = {
 	{ key = "cinematicMode", label = "SL_CONFIG_CINE", tip = "SL_CONFIG_CINE_TT",
 	  onChange = function() S.ApplyCinematic() end },
 	{ key = "emoteAnimations", label = "SL_CONFIG_EMOTE", tip = "SL_CONFIG_EMOTE_TT" },
+	{ key = "voiceSyncText", label = "SL_CONFIG_VOICESYNC", tip = "SL_CONFIG_VOICESYNC_TT" },
+	{ key = "voiceWait", label = "SL_CONFIG_VOICEWAIT", tip = "SL_CONFIG_VOICEWAIT_TT" },
+	{ key = "voiceAuto", label = "SL_CONFIG_VOICEAUTO", tip = "SL_CONFIG_VOICEAUTO_TT" },
 	{ key = "dimWorld", label = "SL_CONFIG_DIM", tip = "SL_CONFIG_DIM_TT",
 	  onChange = function()
 		if S.db.dimWorld and (S.db.dimAmount or 0) <= 0 then S.db.dimAmount = 0.5; O.Refresh() end
@@ -142,7 +145,7 @@ function O.Create()
 		local cb = CreateFrame("CheckButton", name, panel, "InterfaceOptionsCheckButtonTemplate")
 		local column = i <= perColumn and 0 or 1
 		local row = (i - 1) % perColumn
-		cb:SetPoint("TOPLEFT", panel, "TOPLEFT", 16 + column * 290, -276 - row * 26)
+		cb:SetPoint("TOPLEFT", panel, "TOPLEFT", 16 + column * 290, -276 - row * 24)
 		_G[name .. "Text"]:SetText(L[def.label])
 		_G[name .. "Text"]:SetWidth(240)
 		_G[name .. "Text"]:SetJustifyH("LEFT")
@@ -156,7 +159,7 @@ function O.Create()
 	end
 
 	-- Buttons
-	local y = -276 - perColumn * 26 - 14
+	local y = -276 - perColumn * 24 - 14
 	local preview = CreateFrame("Button", "StorylineOptionPreview", panel, "UIPanelButtonTemplate")
 	preview:SetWidth(140)
 	preview:SetHeight(24)
@@ -268,6 +271,21 @@ SlashCmdList["STORYLINE"] = function(msg)
 		S.Print("cinematic mode: " .. (S.db.cinematicMode and "on" or "off") .. " | strength "
 			.. floor((S.db.cinematicStrength or 0) * 100 + 0.5) .. "% | direction "
 			.. (S.db.cinematicSign == -1 and "reversed" or "normal") .. "  (usage: /storyline cine, cine 0-100, cine flip)")
+	elseif msg:find("^voice") then
+		-- /storyline voice          shows the VoiceOver status
+		-- /storyline voice text     text follows the voice on / off
+		-- /storyline voice wait     wait for the voice on / off
+		-- /storyline voice auto     continue automatically on / off
+		local arg = msg:match("^voice%s+(%S+)")
+		if arg == "text" then
+			S.db.voiceSyncText = not S.db.voiceSyncText
+		elseif arg == "wait" then
+			S.db.voiceWait = not S.db.voiceWait
+		elseif arg == "auto" then
+			S.db.voiceAuto = not S.db.voiceAuto
+		end
+		if O.Refresh then O.Refresh() end
+		S.Print(S.Voice.Status())
 	elseif msg == "emote" then
 		S.db.emoteAnimations = not S.db.emoteAnimations
 		if O.Refresh then O.Refresh() end

@@ -179,6 +179,7 @@ end
 ------------------------------------------------------------------------
 function S.StartDialog(s)
 	S.CancelPendingClose()
+	if S.Voice then S.Voice.Reset() end
 	s.npcUnit = s.npcUnit or S.GetNPCUnit()
 	local name = s.npcName or (s.npcUnit and UnitName(s.npcUnit)) or ""
 	s.texts = S.SplitParagraphs(s.text)
@@ -212,6 +213,7 @@ function S.PlayText(i)
 		if emote then r, g, b = emote.r, emote.g, emote.b end
 	end
 	UI.StartText(text, r, g, b)
+	if S.Voice then S.Voice.OnText(i) end   -- VoiceOver: the text follows the voice
 	if UI.UpdateLocationTint then UI.UpdateLocationTint() end   -- the game time moves on
 
 	local npcDead = s.npcUnit and UnitIsDead(s.npcUnit)
@@ -252,6 +254,10 @@ end
 -- Click on the bubble (or SPACE).
 function S.Advance()
 	if not S.session then return end
+	-- VoiceOver is still speaking this paragraph: wait for it, or SHIFT + click to skip the voice
+	if S.Voice and S.Voice.Locked() then
+		if IsShiftKeyDown() then S.Voice.Skip() else return end
+	end
 	if UI.IsTyping() then
 		UI.FinishTyping()
 	elseif S.IsOn(UI.nextButton) then   -- disabled while a reward has to be picked
@@ -263,6 +269,7 @@ end
 function S.Rewind()
 	local s = S.session
 	if not s then return end
+	if S.Voice then S.Voice.Desync() end   -- the voice cannot be rewound
 	UI.HideHovers()
 	s.index = 0
 	S.PlayNext()

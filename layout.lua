@@ -395,6 +395,7 @@ end
 
 function UI.FinishTyping()
 	local chat = UI.chat
+	chat.sync = nil
 	if chat.start then
 		chat.start = nil
 		local len = (UI.chatText:GetText() or ""):len()
@@ -452,7 +453,15 @@ local function onUpdateChat(self, elapsed)
 	if self.start then
 		local text = UI.chatText:GetText()
 		if text and text:len() > 0 then
-			self.start = self.start + elapsed * ANIMATION_TEXT_SPEED * (S.db.textSpeedFactor or 0.5)
+			-- voice.lua: when VoiceOver speaks this text, the position follows the audio clock
+			local progress = self.sync and self.sync()
+			if progress then
+				local position = S.Voice.TypingPosition(progress, text:len())
+				if position > self.start then self.start = position end
+			else
+				self.sync = nil
+				self.start = self.start + elapsed * ANIMATION_TEXT_SPEED * (S.db.textSpeedFactor or 0.5)
+			end
 			if S.db.textSpeedFactor == 0 or self.start >= text:len() then
 				UI.FinishTyping()
 			else
